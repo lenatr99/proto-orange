@@ -1,3 +1,12 @@
+An exercise/prototype/technology test for Orange on Web
+
+- Prepare a Python environment with pip or conda, run `pip install -r requirements.txt`.
+- Run `python server/main.py`.
+- Run `npm start`
+- Open [http://localhost:3000](http://localhost:3000) in one or more browsers.
+
+-------------
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

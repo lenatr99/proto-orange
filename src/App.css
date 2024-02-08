@@ -1,38 +1,79 @@
-.App {
-  text-align: center;
+.widget {
+  stroke: grey;
+  z-index: 100;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+
+.color-button {
+    display: inline;
+  min-width: 20px;
+  height: 20px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+g.widget-ear path:first-child {
+    stroke: transparent;
+    stroke-linecap: round;
+    stroke-width: 20;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+g.widget-ear path:not(:first-child){
+    stroke: grey;
+    stroke-linecap: round;
+    stroke-width: 3;
 }
 
-.App-link {
-  color: #61dafb;
+g.widget-ear:hover path:not(:first-child) {
+    stroke: grey;
+    stroke-linecap: round;
+    stroke-width: 5;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+g.connection path {
+    fill: none;
+}
+
+g.connection path.hoverArea {
+    stroke: transparent;
+    stroke-linecap: round;
+    stroke-width: 20;
+}
+
+g.connection path.hovered {
+    visibility: hidden;
+    stroke: lightgrey;
+    stroke-linecap: round;
+    stroke-width: 6px;
+}
+
+g.connection:hover path.hovered {
+    visibility: visible;
+}
+
+g.connection path.connection {
+    fill: none;
+    stroke: grey;
+    stroke-width: 3px;
+}
+
+g.temp {
+    pointer-events: none;
+}
+
+g.widget-dialog foreignObject{
+    overflow: visible;
+    width: 1px;
+    height: 1px;
+    z-index: 150;
+}
+
+div.palette {
+    width: 78px;
+    padding: 20px;
+    background-color: white;
+    border: 1px solid black;
+    z-index: 150;
+
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
 }
