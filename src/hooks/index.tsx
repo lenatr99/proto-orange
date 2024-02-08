@@ -28,6 +28,7 @@ export function useSyncedReducer<S, A>(
         }
         if (socket) {
             socket.on(eventName, onReceive);
+            socket.emit(eventName, "init_request")
             return () => {
                 socket.off(eventName);
             }

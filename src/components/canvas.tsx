@@ -51,13 +51,12 @@ const Connection = ({x1, y1, x2, y2, onMouseUp}) => {
 interface IWidgetData {
     x: number;
     y: number;
-    name: string;
-    id?: string;
+    widgetId?: string;
     isOpen: boolean;
 }
 
 interface IWidgetList {
-    [id: string]: IWidgetData;
+    [widgetId: string]: IWidgetData;
 }
 
 export const Canvas = () =>  {
@@ -76,20 +75,23 @@ export const Canvas = () =>  {
     const [widgets, widgetAction] = useSyncedReducer(
         (state: IWidgetList, {type, ...args}) => {
             switch (type) {
+                case "init": {
+                    return args.widgets as IWidgetList;
+                }
                 case "addWidget": {
-                    const id = args.id || newWidgetId();
+                    const widgetId = args.widgetId || newWidgetId();
                     return {...state,
-                            [id]: {...args, name: args.name || id, id, isOpen: false}}
+                            [widgetId]: {...args, widgetId, isOpen: false}}
                 }
                 case "removeWidget": {
                     return Object.fromEntries(
                         Object.entries(state)
-                            .filter(([id, _]) => id !== args.widgetId));
+                            .filter(([widgetId, _]) => widgetId !== args.widgetId));
                 }
                 case "removeWidgets": {
                     return Object.fromEntries(
                         Object.entries(state)
-                            .filter(([id, _]) => !args.selection.includes(id)));
+                            .filter(([widgetId, _]) => !args.selection.includes(widgetId)));
                 }
                 case "dragWidget":
                 case "moveWidget": {
@@ -114,6 +116,9 @@ export const Canvas = () =>  {
     const [connections, connectionsAction] = useSyncedReducer(
         (state, {type, ...args}): [string, string][] => {
             switch (type) {
+                case "init": {
+                    return args.connections;
+                }
                 case "addConnection": {
                     const {sourceId, targetId} = args;
                     if (state.find(([s, t]) => s === sourceId && t === targetId))
@@ -145,8 +150,8 @@ export const Canvas = () =>  {
     const [selection, setSelection] = React.useState([] as string[]);
 
     const addWidget = (x: number, y: number, defaultId=null) => {
-        const id = defaultId || newWidgetId();
-        widgetAction({type: "addWidget", x, y, name: id, id})
+        const widgetId = defaultId || newWidgetId();
+        widgetAction({type: "addWidget", x, y, widgetId})
     }
 
     const resetMoveState = () => {
@@ -195,8 +200,8 @@ export const Canvas = () =>  {
                      Math.sqrt((downX - event.clientX) ** 2
                                + (downY - event.clientY) ** 2))
         ]);
-        moveOrigins.forEach(([id, ox, oy]) => {
-            widgetAction({type: "dragWidget", widgetId: id,
+        moveOrigins.forEach(([widgetId, ox, oy]) => {
+            widgetAction({type: "dragWidget", widgetId,
                           x: ox + event.clientX - downX,
                           y: oy + event.clientY - downY});
         })
@@ -210,8 +215,8 @@ export const Canvas = () =>  {
                 widgetAction({type: "flipOpen", widgetId: moveOrigins[0][0]});
             }
             else {
-                moveOrigins.forEach(([id, ox, oy]) => {
-                    widgetAction({type: "moveWidget", widgetId: id,
+                moveOrigins.forEach(([widgetId, ox, oy]) => {
+                    widgetAction({type: "moveWidget", widgetId,
                                   x: ox + event.clientX - downX,
                                   y: oy + event.clientY - downY});
                 })
@@ -237,8 +242,8 @@ export const Canvas = () =>  {
             if (!moveOrigins.length) {
                 const [x1, x2, y1, y2] = normalizedRect(downX, downY,
                                                         event.clientX, event.clientY);
-                setSelection(Object.keys(widgets).filter((id) => {
-                    const widget = widgets[id];
+                setSelection(Object.keys(widgets).filter((widgetId) => {
+                    const widget = widgets[widgetId];
                     return widget.x + widgetR > x1 && widget.x - widgetR < x2
                         && widget.y + widgetR > y1 && widget.y - widgetR < y2;
                 }))
@@ -297,12 +302,12 @@ export const Canvas = () =>  {
                   width={srx2 - srx1} height={sry2 - sry1}
                   fill="lightblue" stroke="blue" fillOpacity="0.8" /> }
         { Object.values(widgets).map((widget) =>
-            <Widget key={widget.id} data={widget}
+            <Widget key={widget.widgetId} data={widget}
                     onMouseWidget={widgetMouse} onMouseEar={earMouse}
                     onHover={registerHover}
-                    selected={selection.includes(widget.id)}
+                    selected={selection.includes(widget.widgetId)}
                     isOpen={widget.isOpen}
-                    connection={{socket, sessionId, widgetId: widget.id}}
+                    connection={{socket, sessionId, widgetId: widget.widgetId}}
             />)
         }
     </svg>

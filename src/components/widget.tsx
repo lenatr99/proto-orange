@@ -30,29 +30,29 @@ const Ear = ({x, y, side, onMouseDown }) => {
 export const Widget = ({data, onMouseWidget, onMouseEar, onHover, selected, isOpen, connection }) => {
     const [settings, setter] = useWidgetSettings(
         connection,
-        {color: "white", name: data.name});
+        {color: "white", name: data.widgetId});
 
     const onMouseWidgetDown = (event) => {
         if (event.button !== 0)
             return;
-        onMouseWidget(data.id, event.clientX, event.clientY, event);
+        onMouseWidget(data.widgetId, event.clientX, event.clientY, event);
     }
 
     const onMouseEarDown = (side: "left" | "right", event) => {
         if (event.button !== 0)
             return;
-        onMouseEar(data.id, side, event);
+        onMouseEar(data.widgetId, side, event);
     }
 
-    return <g onMouseEnter={() => onHover(data.id, true) }
-              onMouseLeave={() => onHover(data.id, false) }>
+    return <g onMouseEnter={() => onHover(data.widgetId, true) }
+              onMouseLeave={() => onHover(data.widgetId, false) }>
         { selected && <circle cx={data.x} cy={data.y} r={widgetR + 4} fill="blue" fillOpacity="0.3" /> }
         <circle className={"widget"} cx={data.x} cy={data.y} r={widgetR} strokeWidth={`${data.isOpen ? 3: 1.5}px`}
                 fill={settings.color || "white"}
                 onMouseDown={onMouseWidgetDown} />
         <Ear x={data.x} y={data.y} side="left" onMouseDown={(event) => onMouseEarDown("left", event)}/>
         <Ear x={data.x} y={data.y} side="right" onMouseDown={(event) => onMouseEarDown("right", event)}/>
-        <text x={data.x} y={data.y + 1.3 * widgetR } textAnchor="middle" dy=".5em">{data.name.slice(0, 8)}</text>
+        <text x={data.x} y={data.y + 1.3 * widgetR } textAnchor="middle" dy=".5em">{settings.name.slice(0, 8)}</text>
         {isOpen
             && <WidgetDialog x={data.x} y={data.y} onDataChanged={(color: string) => setter({color})} />
         }
