@@ -77,3 +77,7 @@ div.palette {
     flex-direction: row;
     gap: 10px;
 }
+
+svg:focus {
+    outline: none;
+}
