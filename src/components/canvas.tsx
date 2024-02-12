@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import io from "socket.io-client";
-import { v4 as uuidv4} from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 import {useSyncedReducer} from "../hooks";
 import {stopEvent} from "../utils";
@@ -15,7 +15,7 @@ const normalizedRect = (x1: number, y1: number,
 
 const Bezier = ({x1, y1, x2, y2, className}) =>
     <path className={className}
-          d={`M ${x1} ${y1} C ${x1 + 30} ${y1} ${x2 - 30} ${y2} ${x2} ${y2}`} />
+          d={`M ${x1} ${y1} C ${x1 + 30} ${y1} ${x2 - 30} ${y2} ${x2} ${y2}`} />;
 
 
 const ConnectingLine = ({x1, y1, x2, y2}) =>
@@ -23,7 +23,7 @@ const ConnectingLine = ({x1, y1, x2, y2}) =>
         { ["hoverArea", "hovered", "connection"].map((className) =>
             <Bezier className={className} key={className}
                     x1={x1} y1={y1} x2={x2} y2={y2} />) }
-    </g>
+    </g>;
 
 
 const TempConnection = ({wx, wy, x, y, side}) => {
@@ -35,7 +35,7 @@ const TempConnection = ({wx, wy, x, y, side}) => {
         }
         <circle cx={x1} cy={wy} r={3} fill="grey"/>
     </g>
-}
+};
 
 
 const Connection = ({x1, y1, x2, y2, onMouseUp}) => {
@@ -46,7 +46,7 @@ const Connection = ({x1, y1, x2, y2, onMouseUp}) => {
         <circle cx={x1} cy={y1} r={3} fill="grey"/>
         <circle cx={x2} cy={y2} r={3} fill="grey"/>
     </g>
-}
+};
 
 
 
@@ -91,7 +91,6 @@ interface IConnectingState extends IMouseState {
     side: "left" | "right";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface IMovingState extends IMouseState {
     state: "moving";
     x: number;
@@ -104,7 +103,7 @@ interface IMovingState extends IMouseState {
 
 const initialMouseState: IMouseState = {
     state: null, x: null, y: null, downX: null, downY: null, distance: 0, moveOrigins: [],
-    sourceId: null, side: null, targetId: null}
+    sourceId: null, side: null, targetId: null};
 
 
 const SelectionRect = ({downX, downY, x, y}) => {
@@ -112,7 +111,7 @@ const SelectionRect = ({downX, downY, x, y}) => {
     return <rect x={srx1} y={sry1}
           width={srx2 - srx1} height={sry2 - sry1}
           fill="lightblue" stroke="blue" fillOpacity="0.8" />
-}
+};
 
 
 export const Canvas = () =>  {
@@ -177,8 +176,9 @@ export const Canvas = () =>  {
                 }
                 case "addConnection": {
                     const {sourceId, targetId} = args;
-                    if (state.find(([s, t]) => s === sourceId && t === targetId))
+                    if (state.find(([s, t]) => s === sourceId && t === targetId)) {
                         return state;
+                    }
                     return [...state, [sourceId, targetId]];
                 }
                 case "removeConnection": {
@@ -209,7 +209,7 @@ export const Canvas = () =>  {
                     const [dx, dy] = [args.x - state.downX, args.y - state.downY];
                     state.moveOrigins.forEach(([widgetId, ox, oy]) => {
                         widgetAction({type: "dragWidget", widgetId, x: ox + dx, y: oy + dy});
-                    })
+                    });
                     return {...state, ...coords,
                             distance: state.distance + (args.x - state.x) ** 2 + (args.y - state.y) ** 2};
                 case "setConnectionTarget":
@@ -233,11 +233,11 @@ export const Canvas = () =>  {
     const addWidget = (x: number, y: number, defaultId=null) => {
         const widgetId = defaultId || newWidgetId();
         widgetAction({type: "addWidget", x, y, widgetId})
-    }
+    };
 
     const clearSelection = () => {
         setSelection([]);
-    }
+    };
 
     const widgetMouse = (widgetId: string, x: number, y: number, event: React.MouseEvent) => {
         stopEvent(event);
@@ -253,24 +253,25 @@ export const Canvas = () =>  {
                     (id) => [id, widgets[id].x, widgets[id].y] as [string, number, number])]
         }
         setMouseState({type: "startMoving", moveOrigins, downX: x, downY: y});
-    }
+    };
 
     const earMouse = (widgetId: string, side: string, event: React.MouseEvent) => {
         stopEvent(event);
         clearSelection();
         setMouseState({type: "startConnecting", sourceId: widgetId, x: event.clientX, y: event.clientY, side});
-    }
+    };
 
     const onMouseDown = (event: React.MouseEvent) => {
         stopEvent(event);
         setMouseState({type: "startSelecting", x: event.clientX, y: event.clientY});
-    }
+    };
 
     const onMouseMove = (event: React.MouseEvent) => {
         stopEvent(event);
-        if (mouseState.state)
+        if (mouseState.state) {
             setMouseState({type: "move", x: event.clientX, y: event.clientY});
-    }
+        }
+    };
 
     const onMouseUp = (event: React.MouseEvent) => {
         const notMoved = mouseState.distance < 16;
@@ -289,7 +290,7 @@ export const Canvas = () =>  {
                 break;
             }
             case "connecting": {
-                let {sourceId, targetId} = mouseState
+                let {sourceId, targetId} = mouseState;
                 if (!targetId) {
                     targetId = newWidgetId();
                     addWidget(event.clientX, event.clientY, targetId);
@@ -321,7 +322,7 @@ export const Canvas = () =>  {
         }
         setMouseState({type: "reset"});
         stopEvent(event);
-    }
+    };
 
     const keyHandler = (event: React.KeyboardEvent) => {
         if (event.key === "Backspace" || event.key === "Delete") {
@@ -329,13 +330,13 @@ export const Canvas = () =>  {
             widgetAction({type: "removeWidgets", selection});
             clearSelection();
         }
-    }
+    };
     const registerHover = (widgetId: string, hover: boolean) => {
         if (mouseState.state === "connecting"
             && (hover || mouseState.targetId === widgetId)) {
                 setMouseState({type: "setConnectionTarget", targetId: hover ? widgetId : null})
         }
-    }
+    };
 
     return <svg width="100%" height="1000" tabIndex={0} ref={(el) => el && el.focus()}
                 onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
@@ -370,7 +371,7 @@ export const Canvas = () =>  {
             />)
         }
     </svg>
-}
+};
 
 
 export default Canvas;

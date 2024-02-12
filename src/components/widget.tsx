@@ -24,7 +24,7 @@ const Ear = ({x, y, side, onMouseDown }) => {
         <path d={`M ${sx} ${sy} A ${rr} ${rr} 0 0 0 ${ex} ${ey}`}
               fill="none" />
     </g>
-}
+};
 
 
 export const Widget = ({data, onMouseWidget, onMouseEar, onHover, selected, isOpen, connection }) => {
@@ -32,17 +32,19 @@ export const Widget = ({data, onMouseWidget, onMouseEar, onHover, selected, isOp
         connection,
         {color: "white", name: data.widgetId});
 
-    const onMouseWidgetDown = (event) => {
-        if (event.button !== 0)
+    const onMouseWidgetDown = (event: React.MouseEvent) => {
+        if (event.button !== 0) {
             return;
+        }
         onMouseWidget(data.widgetId, event.clientX, event.clientY, event);
-    }
+    };
 
-    const onMouseEarDown = (side: "left" | "right", event) => {
-        if (event.button !== 0)
+    const onMouseEarDown = (side: "left" | "right", event: React.MouseEvent) => {
+        if (event.button !== 0) {
             return;
+        }
         onMouseEar(data.widgetId, side, event);
-    }
+    };
 
     return <g onMouseEnter={() => onHover(data.widgetId, true) }
               onMouseLeave={() => onHover(data.widgetId, false) }>
@@ -50,14 +52,14 @@ export const Widget = ({data, onMouseWidget, onMouseEar, onHover, selected, isOp
         <circle className={"widget"} cx={data.x} cy={data.y} r={widgetR} strokeWidth={`${data.isOpen ? 3: 1.5}px`}
                 fill={settings.color || "white"}
                 onMouseDown={onMouseWidgetDown} />
-        <Ear x={data.x} y={data.y} side="left" onMouseDown={(event) => onMouseEarDown("left", event)}/>
-        <Ear x={data.x} y={data.y} side="right" onMouseDown={(event) => onMouseEarDown("right", event)}/>
+        <Ear x={data.x} y={data.y} side="left" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("left", event)}/>
+        <Ear x={data.x} y={data.y} side="right" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("right", event)}/>
         <text x={data.x} y={data.y + 1.3 * widgetR } textAnchor="middle" dy=".5em">{settings.name.slice(0, 8)}</text>
         {isOpen
             && <WidgetDialog x={data.x} y={data.y} onDataChanged={(color: string) => setter({color})} />
         }
     </g>
-}
+};
 
 const colors = ["red", "green", "blue"];
 
@@ -70,12 +72,12 @@ const Palette = ({onColorClicked}) =>
                      event.preventDefault();
                      onColorClicked(color);
                  }} /> )}
-    </div>
+    </div>;
 
 const WidgetDialog = ({x, y, onDataChanged}) => {
     const colorEdited = (color: string) => {
         onDataChanged(color)
-    }
+    };
     return <g className="widget-dialog">
         <foreignObject x={x - 65} y={y - 100}>
             <div className={"widget-dialog"}
@@ -84,6 +86,6 @@ const WidgetDialog = ({x, y, onDataChanged}) => {
             </div>
         </foreignObject>
     </g>
-}
+};
 
 export default Widget;

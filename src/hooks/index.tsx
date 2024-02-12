@@ -25,13 +25,16 @@ export function useSyncedReducer<S, A>(
             if (value.sessionId !== sessionId) {
                 dispatch(value);
             }
-        }
+        };
         if (socket) {
             socket.on(eventName, onReceive);
-            socket.emit(eventName, "init_request")
+            socket.emit(eventName, "init_request");
             return () => {
                 socket.off(eventName);
             }
+        }
+        else {
+            return undefined;
         }
     }, [socket, sessionId, eventName]);
 
