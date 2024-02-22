@@ -4,8 +4,10 @@ import {v4 as uuidv4} from 'uuid';
 
 import {useSyncedReducer} from "../hooks";
 import {stopEvent} from "../utils";
-import Widget, {widgetR} from "./widget";
-
+import {widgetR} from "./widget";
+import widgetRepo from "../widgets/index"
+import WidgetNode from "./widgetnode";
+import WidgetMenu from "./widgetmenu";
 
 const normalizedRect = (x1: number, y1: number,
                         x2: number, y2: number) =>
@@ -54,6 +56,7 @@ interface IWidgetData {
     x: number;
     y: number;
     widgetId?: string;
+    widgetType: string;
     isOpen: boolean;
 }
 
@@ -63,7 +66,7 @@ interface IWidgetList {
 
 
 interface IMouseState {
-    state?: "selecting" | "connecting" | "moving";
+    state?: "selecting" | "connecting" | "moving" | "widgetMenu";
     x?: number;
     y?: number;
     downX?: number;
@@ -100,6 +103,9 @@ interface IMovingState extends IMouseState {
     moveOrigins: [string, number, number][];
 }
 
+interface IWidgetMenuState extends IMouseState {
+    state: "widgetMenu";
+}
 
 const initialMouseState: IMouseState = {
     state: null, x: null, y: null, downX: null, downY: null, distance: 0, moveOrigins: [],
@@ -118,6 +124,7 @@ export const Canvas = () =>  {
     const newWidgetId = uuidv4;
     const [socket, setSocket] = useState(null);
     const sessionId: string = React.useMemo(uuidv4, []);
+    const [[menuX, menuY, menuAction], setMenu]: [[number?, number?, ((widget: string) => undefined)?], any] = useState([null, null, null]);
 
     React.useEffect(() => {
         const socket = io('http://localhost:4000');
@@ -222,6 +229,8 @@ export const Canvas = () =>  {
                     return {...state, ...coords, state: "selecting", downX: args.x, downY: args.y, distance: 0};
                 case "startConnecting":
                     return {...state, ...coords, state: "connecting", sourceId: args.sourceId, side: args.side};
+                case "widgetMenu":
+                    return {...state, state: "widgetMenu"};
                 default:
                     throw new Error(`Unknown action type: ${type}`);
             }
@@ -230,9 +239,10 @@ export const Canvas = () =>  {
 
     const [selection, setSelection] = React.useState([] as string[]);
 
-    const addWidget = (x: number, y: number, defaultId=null) => {
+    const addWidget = (x: number, y: number, widgetType: string, defaultId: string = null) => {
         const widgetId = defaultId || newWidgetId();
-        widgetAction({type: "addWidget", x, y, widgetId})
+        setMenu([null, null, null]);
+        widgetAction({type: "addWidget", x, y, widgetType, widgetId})
     };
 
     const clearSelection = () => {
@@ -268,12 +278,13 @@ export const Canvas = () =>  {
 
     const onMouseMove = (event: React.MouseEvent) => {
         stopEvent(event);
-        if (mouseState.state) {
+        if (mouseState.state && mouseState.state != "widgetMenu") {
             setMouseState({type: "move", x: event.clientX, y: event.clientY});
         }
     };
 
     const onMouseUp = (event: React.MouseEvent) => {
+        stopEvent(event);
         const notMoved = mouseState.distance < 16;
         switch(mouseState.state) {
             case "moving": {
@@ -290,24 +301,43 @@ export const Canvas = () =>  {
                 break;
             }
             case "connecting": {
-                let {sourceId, targetId} = mouseState;
-                if (!targetId) {
-                    targetId = newWidgetId();
-                    addWidget(event.clientX, event.clientY, targetId);
+                const {sourceId, side} = mouseState;
+                const targetId = mouseState.targetId || newWidgetId();
+
+                const connect = () => {
+                    if (side === "right") {
+                        connectionsAction({type: "addConnection", sourceId, targetId});
+                    }
+                    else {
+                        connectionsAction({type: "addConnection", targetId, sourceId});
+                    }
+                    setMouseState({type: "reset"});
+                };
+
+                if (!mouseState.targetId) {
+                    setMouseState({type: "widgetMenu"});
+                    setMenu([event.clientX, event.clientY,
+                        (widgetType) => {
+                            addWidget(event.clientX, event.clientY, widgetType, targetId);
+                            connect();
+                        }]);
                 }
-                if (mouseState.side === "left") {
-                    [sourceId, targetId] = [targetId, sourceId];
-                }
-                if ((targetId !== sourceId)
-                    && !connections.find(([s, t]) => s === sourceId && t === targetId)) {
-                    connectionsAction({type: "addConnection", sourceId, targetId});
+                else if ((targetId !== sourceId)
+                  && !connections.find(([s, t]) => s === sourceId && t === targetId)) {
+                    connect();
                 }
                 break;
             }
             case "selecting": {
                 if (notMoved) {
                     clearSelection();
-                    addWidget(event.clientX, event.clientY);
+                    if (menuAction) {
+                        setMenu([null, null, null]);
+                    }
+                    else {
+                        setMenu([event.clientX, event.clientY,
+                            (widgetType) => addWidget(event.clientX, event.clientY, widgetType)]);
+                    }
                 }
                 else {
                     const [x1, x2, y1, y2] = normalizedRect(mouseState.downX, mouseState.downY,
@@ -320,8 +350,11 @@ export const Canvas = () =>  {
                 }
             }
         }
-        setMouseState({type: "reset"});
-        stopEvent(event);
+        // For 'connecting', the state is reset separately. This is because Connecting into
+        // empty space shows a menu and the temporary connection must remain visible.
+        if (mouseState.state !== "connecting") {
+            setMouseState({type: "reset"});
+        }
     };
 
     const keyHandler = (event: React.KeyboardEvent) => {
@@ -338,7 +371,9 @@ export const Canvas = () =>  {
         }
     };
 
-    return <svg width="100%" height="1000" tabIndex={0} ref={(el) => el && el.focus()}
+    return <>
+        <svg width="100%" height="1000" tabIndex={0} ref={(el) => el && el.focus()}
+            style={{position: "absolute", top: 0, left: 0}}
                 onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
                 onKeyUp={keyHandler}>
         { connections.map(([sourceId, targetId]) => {
@@ -353,7 +388,7 @@ export const Canvas = () =>  {
                                    {type: "removeConnection", sourceId, targetId})}
             />})
         }
-        { mouseState.state === "connecting"
+        { (mouseState.state === "connecting" || mouseState.state == "widgetMenu")
             && TempConnection({wx: widgets[mouseState.sourceId].x,
                                wy: widgets[mouseState.sourceId].y,
                                ...mouseState as IConnectingState})
@@ -362,15 +397,27 @@ export const Canvas = () =>  {
             && SelectionRect(mouseState as ISelectionState)
         }
         { Object.values(widgets).map((widget) =>
-            <Widget key={widget.widgetId} data={widget}
+            <WidgetNode key={widget.widgetId} data={widget} name={widget.widgetType}
                     onMouseWidget={widgetMouse} onMouseEar={earMouse}
                     onHover={registerHover}
                     selected={selection.includes(widget.widgetId)}
-                    isOpen={widget.isOpen}
-                    connection={{socket, sessionId, widgetId: widget.widgetId}}
             />)
         }
     </svg>
+        <div style={{position: "absolute", top: 0, left: 0}}>
+          { Object.values(widgets)
+            .map(({widgetType, widgetId, x, y, isOpen}) => React.createElement(
+                widgetRepo[widgetType],
+                {key: widgetId, widgetId, connection: {socket, sessionId, widgetId: widgetId}, x, y,
+                show: isOpen}
+              )
+              )
+          }
+        </div>
+        { menuX !== null
+            && <WidgetMenu x={menuX} y={menuY} action={menuAction}/>
+        }
+    </>;
 };
 
 
