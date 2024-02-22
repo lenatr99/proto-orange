@@ -5,6 +5,8 @@ An exercise/prototype/technology test for Orange on Web
 - Run `npm start`
 - Open [http://localhost:3000](http://localhost:3000) in one or more browsers.
 
+If the server fails because of unexpected `broadcast=True` argument, try `pip install python-socketio==5.7.2`. Apparently `flask-socketio` has problems with newer versions of `python-socket`.
+
 -------------
 
 # Getting Started with Create React App
