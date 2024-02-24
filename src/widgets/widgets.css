@@ -2,3 +2,11 @@ input.form-control:focus {
     outline: none;
     box-shadow: none;
 }
+
+.widget-dialog .mover {
+    visibility: hidden;
+}
+
+.widget-dialog:hover .mover {
+    visibility: visible;
+}

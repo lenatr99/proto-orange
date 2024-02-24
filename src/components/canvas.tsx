@@ -278,9 +278,9 @@ export const Canvas = () =>  {
     };
 
     const onMouseMove = (event: React.MouseEvent) => {
-        stopEvent(event);
         if (mouseState.state && mouseState.state !== "widgetMenu") {
             setMouseState({type: "move", x: event.clientX, y: event.clientY});
+            stopEvent(event);
         }
     };
 
