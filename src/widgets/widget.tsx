@@ -3,8 +3,13 @@ import React from "react";
 import {Badge, OverlayTrigger, Stack, Tooltip} from "react-bootstrap";
 import { ImEnlarge } from "react-icons/im";
 
-const Mover = ({x, y, onMove, className}) => {
+const Head = ({x, y, onMove, className, title, error}) => {
   const start = React.useRef({x: null, y: null});
+
+  const errorBadge = React.useMemo(() =>
+    error && <Badge style={{display: "flex", alignSelf: "flex-start" }} bg={error.type}>{error.text}</Badge>
+  ,
+  [error]);
 
   const onMouseDown = (e) => {
     const downX = e.clientX;
@@ -22,10 +27,25 @@ const Mover = ({x, y, onMove, className}) => {
     window.addEventListener("mouseup", onMouseUp);
   };
 
-  return <ImEnlarge className={className} onMouseDown={onMouseDown}/>
+  return (
+    <Stack direction="horizontal" className="justify-content-between widget-head"
+    onMouseDown={onMouseDown}>
+    <h5 className="widget-title">{title}</h5>
+    {error?.details &&
+      <OverlayTrigger
+        placement="right"
+        delay={{ show: 250, hide: 400 }}
+        overlay={(props) => (<Tooltip {...props}>
+          {error.details}
+        </Tooltip>)}>
+        { errorBadge }
+      </OverlayTrigger>
+    }
+  </Stack>
+  );
 }
 
-export const Widget = ({connection, x: initX, y: initY, show, widgetType}:  WidgetProps) => {
+export const Widget = ({connection, x: initX, y: initY, show, widgetType, putOnTop}:  WidgetProps) => {
   const [settings, setter] = useWidgetSettings(
     connection,
     {widget_error: null, ...widgetType.settings});
@@ -37,23 +57,14 @@ export const Widget = ({connection, x: initX, y: initY, show, widgetType}:  Widg
   const error = settings.widget_error;
 
   return (show &&
-    <Stack gap={1} className="widget-dialog" style={{left: x + 50, top: y - 50}}>
-      <Stack direction="horizontal" className="justify-content-between">
-          <h5 style={{marginBottom: 0}}>{widgetType.widgetName}</h5>
-        {error &&
-              <OverlayTrigger
-                show={!!error.details}
-                placement="right"
-                delay={{ show: 250, hide: 400 }}
-                overlay={(props) => (<Tooltip {...props}>
-                  {error.details}
-                </Tooltip>)}>
-              <Badge style={{display: "flex", alignSelf: "flex-start" }} bg={error.type}>{error.text}</Badge>
-              </OverlayTrigger>
-      }
-        <Mover className="mover" x={x} y={y} onMove={setPos} />
-      </Stack>
-      <hr/>
+    <Stack gap={1} className="widget-dialog"
+           style={{left: x + 50, top: y - 50}}
+           onMouseDown={putOnTop}>
+      <Head className="mover"
+            title={widgetType.widgetName}
+            error={error}
+            x={x} y={y} onMove={setPos} />
+      <hr className="head"/>
       {child}
     </Stack>
   );

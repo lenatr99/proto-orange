@@ -135,23 +135,44 @@ export const Canvas = () =>  {
         };
     }, []);
 
-    const [widgets, widgetAction] = useSyncedReducer(
+    const [widgetOrder, setOrder] = React.useReducer(
+        (state, {type, widgetId}) => {
+            switch (type) {
+                case "init":
+                    return widgetId;
+                case "add":
+                    return [...state, widgetId];
+                case "remove":
+                    return state.filter((id) => id !== widgetId);
+                case "onTop":
+                    return [...state.filter((id) => id !== widgetId), widgetId];
+                default:
+                    throw new Error(`Unknown action type: ${type}`);
+            }
+        },
+        [] as string[]);
+
+      const [widgets, widgetAction] = useSyncedReducer(
         (state: IWidgetList, {type, ...args}) => {
             switch (type) {
                 case "init": {
+                    setOrder({type: "init", widgetId: Object.keys(args.widgets)});
                     return args.widgets as IWidgetList;
                 }
                 case "addWidget": {
                     const widgetId = args.widgetId || newWidgetId();
+                    setOrder({type: "add", widgetId});
                     return {...state,
                             [widgetId]: {...args, widgetId, isOpen: false}}
                 }
                 case "removeWidget": {
+                    setOrder({type: "remove", widgetId: args.widgetId})
                     return Object.fromEntries(
                         Object.entries(state)
                             .filter(([widgetId, _]) => widgetId !== args.widgetId));
                 }
                 case "removeWidgets": {
+                    args.selection.forEach((widgetId) => setOrder({type: "remove", widgetId}));
                     return Object.fromEntries(
                         Object.entries(state)
                             .filter(([widgetId, _]) => !args.selection.includes(widgetId)));
@@ -406,11 +427,13 @@ export const Canvas = () =>  {
         }
     </svg>
         <div style={{position: "absolute", top: 0, left: 0}}>
-          { Object.values(widgets)
+          { widgetOrder.map((widgetId) => widgets[widgetId])
             .map(({widgetType, widgetId, x, y, isOpen}) =>
               <Widget key={widgetId} widgetId={widgetId}
                       widgetType={widgetRepo[widgetType]}
-                      connection={{socket, sessionId, widgetId}} x={x} y={y} show={isOpen} />
+                      connection={{socket, sessionId, widgetId}} x={x} y={y}
+                      putOnTop={() => setOrder({type: "onTop", widgetId})}
+                      show={isOpen} />
               )
           }
         </div>

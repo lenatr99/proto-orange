@@ -3,10 +3,27 @@ input.form-control:focus {
     box-shadow: none;
 }
 
-.widget-dialog .mover {
-    visibility: hidden;
+.widget-title {
+    margin-bottom: 16px;
+    user-select: none;
 }
 
-.widget-dialog:hover .mover {
-    visibility: visible;
+div.widget-dialog {
+    position: absolute;
+    width: auto;
+    height: auto;
+    padding: 7px;
+    border: 2px solid grey;
+    border-radius: 4px;
+    min-width: 400px;
+    z-index: 150;
+    background:#f8f8f8;
+}
+
+div.widget-dialog hr.head {
+    margin-top: 0;
+}
+
+.widget-head {
+    cursor: move;
 }

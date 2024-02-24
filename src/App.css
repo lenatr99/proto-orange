@@ -52,18 +52,6 @@ g.temp {
     pointer-events: none;
 }
 
-div.widget-dialog {
-    position: absolute;
-    width: auto;
-    height: auto;
-    padding: 7px;
-    background-color: white;
-    border: 2px solid grey;
-    border-radius: 4px;
-    min-width: 400px;
-    z-index: 150;
-    background:#f8f8f8;
-}
 
 svg:focus {
     outline: none;
