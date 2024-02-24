@@ -1,6 +1,6 @@
 import React from "react";
 
-export const widgetR = 30;
+export const widgetR = 32;
 
 
 const Ear = ({x, y, side, onMouseDown }) => {
@@ -20,7 +20,7 @@ const Ear = ({x, y, side, onMouseDown }) => {
 };
 
 
-const WidgetNode = ({data, onMouseWidget, onMouseEar, onHover, selected, name }) => {
+const WidgetNode = ({data, onMouseWidget, onMouseEar, onHover, selected, widgetType }) => {
     const onMouseWidgetDown = (event: React.MouseEvent) => {
         if (event.button !== 0) {
             return;
@@ -38,12 +38,17 @@ const WidgetNode = ({data, onMouseWidget, onMouseEar, onHover, selected, name })
     return <g onMouseEnter={() => onHover(data.widgetId, true) }
               onMouseLeave={() => onHover(data.widgetId, false) }>
         { selected && <circle cx={data.x} cy={data.y} r={widgetR + 4} fill="blue" fillOpacity="0.3" /> }
-        <circle className={"widget"} cx={data.x} cy={data.y} r={widgetR} strokeWidth={`${data.isOpen ? 3: 1.5}px`}
-                fill="#ffffc9"
+        <circle className={"widget"} cx={data.x} cy={data.y} r={widgetR}
+                fill={"#fdfdc0"}
                 onMouseDown={onMouseWidgetDown} />
         <Ear x={data.x} y={data.y} side="left" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("left", event)}/>
         <Ear x={data.x} y={data.y} side="right" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("right", event)}/>
-        <text x={data.x} y={data.y + 1.3 * widgetR } textAnchor="middle" dy=".5em">{name.slice(0, 8)}</text>
+        { !!widgetType.icon &&
+          <g transform={`translate(${data.x - widgetR + 8} ${data.y - widgetR + 8})`}
+             style={{pointerEvents: "none"}}>
+            {widgetType.icon}
+          </g> }
+        <text x={data.x} y={data.y + 1.3 * widgetR } textAnchor="middle" dy=".5em">{widgetType.widgetName}</text>
     </g>
 };
 

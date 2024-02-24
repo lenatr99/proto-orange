@@ -8,6 +8,7 @@ import {widgetR} from "./widget";
 import widgetRepo from "../widgets/index"
 import WidgetNode from "./widgetnode";
 import WidgetMenu from "./widgetmenu";
+import Widget from "../widgets/widget";
 
 const normalizedRect = (x1: number, y1: number,
                         x2: number, y2: number) =>
@@ -278,7 +279,7 @@ export const Canvas = () =>  {
 
     const onMouseMove = (event: React.MouseEvent) => {
         stopEvent(event);
-        if (mouseState.state && mouseState.state != "widgetMenu") {
+        if (mouseState.state && mouseState.state !== "widgetMenu") {
             setMouseState({type: "move", x: event.clientX, y: event.clientY});
         }
     };
@@ -388,7 +389,7 @@ export const Canvas = () =>  {
                                    {type: "removeConnection", sourceId, targetId})}
             />})
         }
-        { (mouseState.state === "connecting" || mouseState.state == "widgetMenu")
+        { (mouseState.state === "connecting" || mouseState.state === "widgetMenu")
             && TempConnection({wx: widgets[mouseState.sourceId].x,
                                wy: widgets[mouseState.sourceId].y,
                                ...mouseState as IConnectingState})
@@ -397,7 +398,7 @@ export const Canvas = () =>  {
             && SelectionRect(mouseState as ISelectionState)
         }
         { Object.values(widgets).map((widget) =>
-            <WidgetNode key={widget.widgetId} data={widget} name={widget.widgetType}
+            <WidgetNode key={widget.widgetId} data={widget} widgetType={widgetRepo[widget.widgetType]}
                     onMouseWidget={widgetMouse} onMouseEar={earMouse}
                     onHover={registerHover}
                     selected={selection.includes(widget.widgetId)}
@@ -406,11 +407,10 @@ export const Canvas = () =>  {
     </svg>
         <div style={{position: "absolute", top: 0, left: 0}}>
           { Object.values(widgets)
-            .map(({widgetType, widgetId, x, y, isOpen}) => React.createElement(
-                widgetRepo[widgetType],
-                {key: widgetId, widgetId, connection: {socket, sessionId, widgetId: widgetId}, x, y,
-                show: isOpen}
-              )
+            .map(({widgetType, widgetId, x, y, isOpen}) =>
+              <Widget key={widgetId} widgetId={widgetId}
+                      widgetType={widgetRepo[widgetType]}
+                      connection={{socket, sessionId, widgetId}} x={x} y={y} show={isOpen} />
               )
           }
         </div>

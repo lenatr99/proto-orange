@@ -1,5 +1,4 @@
 .widget {
-  stroke: grey;
   z-index: 100;
 }
 
@@ -57,11 +56,13 @@ div.widget-dialog {
     position: absolute;
     width: auto;
     height: auto;
-    padding: 4px;
+    padding: 7px;
     background-color: white;
-    border: 1px solid black;
+    border: 2px solid grey;
+    border-radius: 4px;
     min-width: 400px;
     z-index: 150;
+    background:#f8f8f8;
 }
 
 svg:focus {

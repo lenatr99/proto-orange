@@ -1,6 +1,4 @@
-import React from "react";
 import {useSyncedReducer} from "../hooks";
-import {stopEvent} from "../utils";
 
 export const widgetR = 30;
 
@@ -12,20 +10,9 @@ export const useWidgetSettings = ({socket, sessionId, widgetId}, initialState: {
 
 export interface WidgetProps {
     widgetId: string;
+    widgetType: any;
     connection: any;
     x: number;
     y: number;
     show: boolean;
 }
-/*
-export const Widget = ({data, isOpen, connection, x, y}) => {
-    const [settings, setter] = useWidgetSettings(
-        connection,
-        {color: "white", name: data.widgetId});
-
-    return isOpen
-            && <WidgetDialog x={data.x} y={data.y} onDataChanged={(color: string) => setter({color})} />
-};
-
-
-export default Widget;*/
