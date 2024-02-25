@@ -9,6 +9,9 @@ import widgetRepo from "../widgets/index"
 import WidgetNode from "./widgetnode";
 import WidgetMenu from "./widgetmenu";
 import Widget from "../widgets/widget";
+import {ImProfile, ImShare2} from "react-icons/im";
+import {Stack} from "react-bootstrap";
+
 
 const normalizedRect = (x1: number, y1: number,
                         x2: number, y2: number) =>
@@ -128,51 +131,34 @@ export const Canvas = () =>  {
     const [[menuX, menuY, menuAction], setMenu]: [[number?, number?, ((widget: string) => undefined)?], any] = useState([null, null, null]);
 
     React.useEffect(() => {
-        const socket = io('http://localhost:4000');
+        const socket = io(window.location.hostname + ':4000');
         setSocket(socket);
         return () => {
             socket.disconnect();
         };
     }, []);
 
-    const [widgetOrder, setOrder] = React.useReducer(
-        (state, {type, widgetId}) => {
-            switch (type) {
-                case "init":
-                    return widgetId;
-                case "add":
-                    return [...state, widgetId];
-                case "remove":
-                    return state.filter((id) => id !== widgetId);
-                case "onTop":
-                    return [...state.filter((id) => id !== widgetId), widgetId];
-                default:
-                    throw new Error(`Unknown action type: ${type}`);
-            }
-        },
-        [] as string[]);
+    const [showWorkflow, setShowWorkflow] = React.useState(true);
+    const [showWidgets, setShowWidgets] = React.useState(true);
 
-      const [widgets, widgetAction] = useSyncedReducer(
+
+    const [widgets, widgetAction] = useSyncedReducer(
         (state: IWidgetList, {type, ...args}) => {
             switch (type) {
                 case "init": {
-                    setOrder({type: "init", widgetId: Object.keys(args.widgets)});
                     return args.widgets as IWidgetList;
                 }
                 case "addWidget": {
                     const widgetId = args.widgetId || newWidgetId();
-                    setOrder({type: "add", widgetId});
                     return {...state,
                             [widgetId]: {...args, widgetId, isOpen: false}}
                 }
                 case "removeWidget": {
-                    setOrder({type: "remove", widgetId: args.widgetId})
                     return Object.fromEntries(
                         Object.entries(state)
                             .filter(([widgetId, _]) => widgetId !== args.widgetId));
                 }
                 case "removeWidgets": {
-                    args.selection.forEach((widgetId) => setOrder({type: "remove", widgetId}));
                     return Object.fromEntries(
                         Object.entries(state)
                             .filter(([widgetId, _]) => !args.selection.includes(widgetId)));
@@ -185,9 +171,21 @@ export const Canvas = () =>  {
                 }
                 case "flipOpen": {
                     const {widgetId} = args;
-                    return {...state,
-                            [widgetId]: {...state[widgetId],
-                                         isOpen: !state[widgetId].isOpen}};
+                    if (state[widgetId].isOpen) {
+                        return {...state,
+                          [widgetId]: {...state[widgetId], isOpen: false}}
+                    }
+                    else {
+                        setShowWidgets(true);
+                        const {[widgetId]: value, ...rest} = state;
+                        return {...rest, [widgetId]: {...value, isOpen: true}};
+                    }
+                }
+                case "onTop": {
+                    const {widgetId} = args;
+                    const {[widgetId]: value, ...rest} = state;
+                    return {...rest,
+                            [widgetId]: value};
                 }
                 default:
                     throw new Error(`Unknown action type: ${type}`);
@@ -195,7 +193,7 @@ export const Canvas = () =>  {
         },
         {} as IWidgetList,
         socket, sessionId, "widget-action",
-        ["dragWidget", "flipOpen"]);
+        ["dragWidget", "flipOpen", "onTop"]);
 
     const [connections, connectionsAction] = useSyncedReducer(
         (state, {type, ...args}): [string, string][] => {
@@ -228,13 +226,17 @@ export const Canvas = () =>  {
         socket, sessionId, "connection-action"
     );
 
+    const [focusWorkflow, setFocusWorkflow] = React.useState(false);
+
     const [mouseState, setMouseState] =
         React.useReducer((state: IMouseState, {type, ...args}) => {
             const coords = args.x !== null? {x: args.x, y: args.y} : {};
             switch (type) {
                 case "reset":
-                    return initialMouseState;
+                    setFocusWorkflow(false);
+                    return {...initialMouseState};
                 case "move":
+                    setFocusWorkflow(true);
                     const [dx, dy] = [args.x - state.downX, args.y - state.downY];
                     state.moveOrigins.forEach(([widgetId, ox, oy]) => {
                         widgetAction({type: "dragWidget", widgetId, x: ox + dx, y: oy + dy});
@@ -393,9 +395,19 @@ export const Canvas = () =>  {
         }
     };
 
+    // This is terrible; workflow and widget layer must be separate components,
+    // but this would require having states at their common parent and I hate
+    // to refactor this now. :)
+    // The way in which canvas
     return <>
+        <div style={{pointerEvents: "none",
+            visibility: showWorkflow ? "visible" : "hidden",
+            position: "absolute",
+            top: 0, left: 0, width: "100%", height: "100%",
+            ...(focusWorkflow ? {zIndex: 15, backgroundColor: "#ffffff88"}
+              : {zIndex: 5, backgroundColor: "transparent"})}}>
         <svg width="100%" height="1000" tabIndex={0} ref={(el) => el && el.focus()}
-            style={{position: "absolute", top: 0, left: 0}}
+            style={{position: "absolute", top: 0, left: 0, pointerEvents: "auto",}}
                 onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
                 onKeyUp={keyHandler}>
         { connections.map(([sourceId, targetId]) => {
@@ -426,16 +438,29 @@ export const Canvas = () =>  {
             />)
         }
     </svg>
-        <div style={{position: "absolute", top: 0, left: 0}}>
-          { widgetOrder.map((widgetId) => widgets[widgetId])
+        </div>
+
+        <div style={{position: "absolute", top: 0, left: 0, zIndex: 10,
+            visibility: showWidgets ? "visible" : "hidden"}}>
+          { Object.values(widgets)
             .map(({widgetType, widgetId, x, y, isOpen}) =>
               <Widget key={widgetId} widgetId={widgetId}
                       widgetType={widgetRepo[widgetType]}
                       connection={{socket, sessionId, widgetId}} x={x} y={y}
-                      putOnTop={() => setOrder({type: "onTop", widgetId})}
+                      putOnTop={() => widgetAction({type: "onTop", widgetId})}
                       show={isOpen} />
               )
           }
+        </div>
+        <div style={{position: "absolute", top: 0, left: 0, zIndex: 20}}>
+            <Stack>
+              <ImShare2
+                style={{position: "fixed", top: 15, right: 10, opacity: showWorkflow ? 0.8 : 0.4}} size={30}
+                onClick={() => setShowWorkflow(!showWorkflow)}
+              />
+              <ImProfile style={{position: "fixed", top: 15, right: 50, opacity: showWidgets ? 0.8 : 0.4}} size={30}
+              onClick={() => setShowWidgets(!showWidgets)}/>
+            </Stack>
         </div>
         { menuX !== null
             && <WidgetMenu x={menuX} y={menuY} action={menuAction}/>

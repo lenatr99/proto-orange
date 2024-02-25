@@ -39,7 +39,7 @@ const WidgetNode = ({data, onMouseWidget, onMouseEar, onHover, selected, widgetT
               onMouseLeave={() => onHover(data.widgetId, false) }>
         { selected && <circle cx={data.x} cy={data.y} r={widgetR + 4} fill="blue" fillOpacity="0.3" /> }
         <circle className={"widget"} cx={data.x} cy={data.y} r={widgetR}
-                fill={"#fdfdc0"}
+                fill="#fdfdc0" stroke="#f0f0b0" strokeWidth={2}
                 onMouseDown={onMouseWidgetDown} />
         <Ear x={data.x} y={data.y} side="left" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("left", event)}/>
         <Ear x={data.x} y={data.y} side="right" onMouseDown={(event: React.MouseEvent) => onMouseEarDown("right", event)}/>

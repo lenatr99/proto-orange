@@ -6,7 +6,7 @@ import scatterplot from "./scatterplot";
 const widgetRepo = {
   "Data Set": dataset,
   "Info": info,
-  "Palette": palette,
+  //"Palette": palette,
   "Scatter Plot": scatterplot,
 };
 
