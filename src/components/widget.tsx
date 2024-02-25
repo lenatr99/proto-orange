@@ -16,4 +16,5 @@ export interface WidgetProps {
     y: number;
     show: boolean;
     putOnTop: () => void;
+    closeWidget: () => void;
 }

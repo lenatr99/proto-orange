@@ -1,9 +1,9 @@
 import {useWidgetSettings, WidgetProps} from "../components/widget";
 import React from "react";
 import {Badge, OverlayTrigger, Stack, Tooltip} from "react-bootstrap";
-import { ImEnlarge } from "react-icons/im";
+import { ImCross } from "react-icons/im";
 
-const Head = ({x, y, onMove, className, title, error}) => {
+const Head = ({x, y, onMove, title, error, closeWidget}) => {
   const start = React.useRef({x: null, y: null});
 
   const errorBadge = React.useMemo(() =>
@@ -41,11 +41,13 @@ const Head = ({x, y, onMove, className, title, error}) => {
         { errorBadge }
       </OverlayTrigger>
     }
+    <ImCross className="close-button" size={10} stroke="gray"
+    onClick={closeWidget}/>
   </Stack>
   );
 }
 
-export const Widget = ({connection, x: initX, y: initY, show, widgetType, putOnTop}:  WidgetProps) => {
+export const Widget = ({connection, x: initX, y: initY, show, widgetType, putOnTop, closeWidget}:  WidgetProps) => {
   const [settings, setter] = useWidgetSettings(
     connection,
     {widget_error: null, ...widgetType.settings});
@@ -60,10 +62,9 @@ export const Widget = ({connection, x: initX, y: initY, show, widgetType, putOnT
     <Stack gap={1} className="widget-dialog"
            style={{left: x + 50, top: y - 50}}
            onMouseDown={putOnTop}>
-      <Head className="mover"
-            title={widgetType.widgetName}
+      <Head title={widgetType.widgetName}
             error={error}
-            x={x} y={y} onMove={setPos} />
+            x={x} y={y} onMove={setPos} closeWidget={closeWidget}/>
       <hr className="head"/>
       {child}
     </Stack>

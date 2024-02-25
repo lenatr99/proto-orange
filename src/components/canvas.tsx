@@ -448,7 +448,9 @@ export const Canvas = () =>  {
                       widgetType={widgetRepo[widgetType]}
                       connection={{socket, sessionId, widgetId}} x={x} y={y}
                       putOnTop={() => widgetAction({type: "onTop", widgetId})}
-                      show={isOpen} />
+                      show={isOpen}
+                      closeWidget={() => widgetAction({type: "flipOpen", widgetId})}
+              />
               )
           }
         </div>

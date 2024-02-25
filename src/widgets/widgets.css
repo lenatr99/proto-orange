@@ -4,15 +4,25 @@ input.form-control:focus {
 }
 
 .widget-title {
-    margin-bottom: 16px;
+    margin: 4px 4px 8px 0;
     user-select: none;
+}
+
+.widget-head .close-button {
+    margin: 8px 0 auto 4px;
+    cursor: default;
+    fill: #555;
+}
+
+.widget-head .close-button:hover {
+    fill: black;
 }
 
 div.widget-dialog {
     position: absolute;
     width: auto;
     height: auto;
-    padding: 7px;
+    padding: 12px;
     border: 2px solid grey;
     border-radius: 4px;
     min-width: 400px;
