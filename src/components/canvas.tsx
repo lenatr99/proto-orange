@@ -355,7 +355,7 @@ export const Canvas = () =>  {
             case "selecting": {
                 if (notMoved) {
                     clearSelection();
-                    if (menuAction) {
+                    if (menuAction || selection.length > 0) {
                         setMenu([null, null, null]);
                     }
                     else {
