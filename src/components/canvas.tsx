@@ -263,17 +263,17 @@ export const Canvas = () =>  {
 
     const [selection, setSelection] = React.useState([] as string[]);
 
-    const addWidget = (x: number, y: number, widgetType: string, defaultId: string = null) => {
+    const addWidget = React.useCallback((x: number, y: number, widgetType: string, defaultId: string = null) => {
         const widgetId = defaultId || newWidgetId();
         setMenu([null, null, null]);
         widgetAction({type: "addWidget", x, y, widgetType, widgetId})
-    };
+    }, [widgetAction, setMenu]);
 
-    const clearSelection = () => {
+    const clearSelection = React.useCallback(() => {
         setSelection([]);
-    };
+    }, [setSelection]);
 
-    const widgetMouse = (widgetId: string, x: number, y: number, event: React.MouseEvent) => {
+    const widgetMouse = React.useCallback((widgetId: string, x: number, y: number, event: React.MouseEvent) => {
         stopEvent(event);
         const thisWidget: [string, number, number] = [widgetId, widgets[widgetId].x, widgets[widgetId].y];
         let moveOrigins: [string, number, number][];
@@ -287,27 +287,27 @@ export const Canvas = () =>  {
                     (id) => [id, widgets[id].x, widgets[id].y] as [string, number, number])]
         }
         setMouseState({type: "startMoving", moveOrigins, downX: x, downY: y});
-    };
+    }, [selection, widgets]);
 
-    const earMouse = (widgetId: string, side: string, event: React.MouseEvent) => {
+    const earMouse = React.useCallback((widgetId: string, side: string, event: React.MouseEvent) => {
         stopEvent(event);
         clearSelection();
         setMouseState({type: "startConnecting", sourceId: widgetId, x: event.clientX, y: event.clientY, side});
-    };
+    }, [setMouseState]);
 
-    const onMouseDown = (event: React.MouseEvent) => {
+    const onMouseDown = React.useCallback((event: React.MouseEvent) => {
         stopEvent(event);
         setMouseState({type: "startSelecting", x: event.clientX, y: event.clientY});
-    };
+    }, [setMouseState]);
 
-    const onMouseMove = (event: React.MouseEvent) => {
+    const onMouseMove = React.useCallback((event: React.MouseEvent) => {
         if (mouseState.state && mouseState.state !== "widgetMenu") {
             setMouseState({type: "move", x: event.clientX, y: event.clientY});
             stopEvent(event);
         }
-    };
+    }, [mouseState, setMouseState]);
 
-    const onMouseUp = (event: React.MouseEvent) => {
+    const onMouseUp = React.useCallback((event: React.MouseEvent) => {
         stopEvent(event);
         const notMoved = mouseState.distance < 16;
         switch(mouseState.state) {
@@ -379,21 +379,23 @@ export const Canvas = () =>  {
         if (mouseState.state !== "connecting") {
             setMouseState({type: "reset"});
         }
-    };
+    }, [mouseState, connections, connectionsAction, setMouseState,
+        clearSelection, addWidget, menuAction, selection, widgets]);
 
-    const keyHandler = (event: React.KeyboardEvent) => {
+    const keyHandler = React.useCallback((event: React.KeyboardEvent) => {
         if (event.key === "Backspace" || event.key === "Delete") {
             connectionsAction({type: "removeWidgets", selection});
             widgetAction({type: "removeWidgets", selection});
             clearSelection();
         }
-    };
-    const registerHover = (widgetId: string, hover: boolean) => {
+    }, [connectionsAction, widgetAction, clearSelection, selection]);
+
+    const registerHover = React.useCallback((widgetId: string, hover: boolean) => {
         if (mouseState.state === "connecting"
             && (hover || mouseState.targetId === widgetId)) {
                 setMouseState({type: "setConnectionTarget", targetId: hover ? widgetId : null})
         }
-    };
+    }, [mouseState, setMouseState]);
 
     // This is terrible; workflow and widget layer must be separate components,
     // but this would require having states at their common parent and I hate
