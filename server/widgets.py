@@ -6,8 +6,24 @@ import Orange
 class SignalManager:
     def __init__(self):
         self.connections = set()
+        self.output_cache = {}
+
+    def connect(self, source_id, target_id):
+        self.connections.add((source_id, target_id))
+        if source_id in self.output_cache:
+            Widget.widgets[target_id].input(self.output_cache[source_id])
+
+    def disconnect(self, source_id, target_id):
+        Widget.widgets[target_id].input(None)
+        self.connections.discard((source_id, target_id))
+
+    def remove_widget(self, widget_id):
+        self.connections.difference_update(
+            {c for c in self.connections if widget_id in c})
+        self.output_cache.pop(widget_id, None)
 
     def send(self, widget_id, data):
+        self.output_cache[widget_id] = data
         for source, target in self.connections:
             if source == widget_id:
                 Widget.widgets[target].input(data)
@@ -106,7 +122,6 @@ class ScatterPlotWidget(Widget):
         self.data = None
         self.x = None
         self.y = None
-        self.color = None
 
     def input(self, data):
         self.data = data

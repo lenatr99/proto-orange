@@ -28,7 +28,6 @@ widget_settings_actions = {}
 widgets = {}
 widget_instances = {}
 
-connections = signal_manager.connections
 connection_actions = []
 
 settings = defaultdict(dict)
@@ -66,6 +65,13 @@ def handle_message(message):
         del widget_settings_actions[widget_id]
         logging.info(f'removed listener for {event_name}')
 
+    def remove_widget(widget_id):
+        del widgets[widget_id]
+        del widget_instances[widget_id]
+        del settings[widget_id]
+        remove_widget_listener(widget_id)
+        signal_manager.remove_widget(widget_id)
+
     if message == 'init_request':
         socketio.emit('widget-action',
                       json.dumps(dict(type='init', widgets=widgets)),
@@ -87,16 +93,10 @@ def handle_message(message):
             settings[widgetId] = {}
             add_widget_listener(widgetId)
         case 'removeWidget':
-            del widgets[widgetId]
-            del widget_instances[widgetId]
-            del settings[widgetId]
-            remove_widget_listener(widgetId)
+            remove_widget(widgetId)
         case 'removeWidgets':
             for widgetId in value["selection"]:
-                del widgets[widgetId]
-                del widget_instances[widgetId]
-                del settings[widgetId]
-                remove_widget_listener(widgetId)
+                remove_widget(widgetId)
         case 'moveWidget':
             widgets[widgetId].update(value)
         case action:
@@ -114,7 +114,7 @@ def send_setting(widget_id, data):
 def handle_message(message):
     if message == 'init_request':
         socketio.emit('connection-action',
-                      json.dumps(dict(type='init', connections=list(connections))),
+                      json.dumps(dict(type='init', connections=list(signal_manager.connections))),
                       to=request.sid)
         return
 
@@ -126,15 +126,15 @@ def handle_message(message):
 
     match value:
         case {'type': 'addConnection', 'sourceId': sourceId, 'targetId': targetId}:
-            connections.add((sourceId, targetId))
+            signal_manager.connect(sourceId, targetId)
         case {'type': 'removeConnection', 'sourceId': sourceId, 'targetId': targetId}:
-            connections.remove((sourceId, targetId))
+            signal_manager.disconnect(sourceId, targetId)
         case {'type': 'removeWidgets', 'selection': selection}:
-            selection = set(selection)
-            connections.difference_update({c for c in connections if set(c) & selection})
+            for widgetId in selection:
+                signal_manager.remove_widget(widgetId)
         case action:
             logging.error(f'unknown action: {action} with {value}')
-    logging.debug(connections)
+    logging.debug(signal_manager.connections)
 
 
 @socketio.on('connect')
