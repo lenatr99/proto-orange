@@ -267,7 +267,7 @@ export const Canvas = () =>  {
         const widgetId = defaultId || newWidgetId();
         setMenu([null, null, null]);
         widgetAction({type: "addWidget", x, y, widgetType, widgetId})
-    }, [widgetAction, setMenu]);
+    }, [widgetAction, newWidgetId, setMenu]);
 
     const clearSelection = React.useCallback(() => {
         setSelection([]);
@@ -287,13 +287,13 @@ export const Canvas = () =>  {
                     (id) => [id, widgets[id].x, widgets[id].y] as [string, number, number])]
         }
         setMouseState({type: "startMoving", moveOrigins, downX: x, downY: y});
-    }, [selection, widgets]);
+    }, [selection, clearSelection, widgets]);
 
     const earMouse = React.useCallback((widgetId: string, side: string, event: React.MouseEvent) => {
         stopEvent(event);
         clearSelection();
         setMouseState({type: "startConnecting", sourceId: widgetId, x: event.clientX, y: event.clientY, side});
-    }, [setMouseState]);
+    }, [setMouseState, clearSelection]);
 
     const onMouseDown = React.useCallback((event: React.MouseEvent) => {
         stopEvent(event);
@@ -379,8 +379,8 @@ export const Canvas = () =>  {
         if (mouseState.state !== "connecting") {
             setMouseState({type: "reset"});
         }
-    }, [mouseState, connections, connectionsAction, setMouseState,
-        clearSelection, addWidget, menuAction, selection, widgets]);
+    }, [mouseState, connections, connectionsAction, setMouseState, widgetAction,
+        clearSelection, addWidget, newWidgetId, menuAction, selection, widgets]);
 
     const keyHandler = React.useCallback((event: React.KeyboardEvent) => {
         if (event.key === "Backspace" || event.key === "Delete") {
