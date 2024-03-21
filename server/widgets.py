@@ -19,7 +19,8 @@ class SignalManager:
 
     def remove_widget(self, widget_id):
         self.connections.difference_update(
-            {c for c in self.connections if widget_id in c})
+            {c for c in self.connections if widget_id in c}
+        )
         self.output_cache.pop(widget_id, None)
 
     def send(self, widget_id, data):
@@ -53,13 +54,11 @@ class Widget:
 
     def emit(self, data):
         from server import send_setting
+
         send_setting(self.widget_id, data)
 
     def message(self, text, details, msg_type):
-        self.emit({"widget_error": dict(
-            text=text,
-            details=details,
-            type=msg_type)})
+        self.emit({"widget_error": dict(text=text, details=details, type=msg_type)})
 
     def error(self, text, details=None):
         self.message(text, details, "danger")
@@ -84,7 +83,7 @@ class DataSetWidget(Widget):
         self.update()
 
     def handle(self, message):
-        self.url = message.get('url', None)
+        self.url = message.get("url", None)
         self.update()
 
     def update(self):
@@ -110,8 +109,9 @@ class InfoWidget(Widget):
             self.info("No data", "No data loaded")
             self.emit({"instances": None, "attributes": None})
         else:
-            self.emit({"instances": len(data),
-                       "attributes": len(data.domain.attributes)})
+            self.emit(
+                {"instances": len(data), "attributes": len(data.domain.attributes)}
+            )
 
 
 class ScatterPlotWidget(Widget):
@@ -122,6 +122,8 @@ class ScatterPlotWidget(Widget):
         self.data = None
         self.x = None
         self.y = None
+        self.selected = []
+        self.last_sent_data = None
 
     def input(self, data):
         self.data = data
@@ -137,6 +139,8 @@ class ScatterPlotWidget(Widget):
 
     def handle(self, message):
         domain = self.data.domain
+        if "selected" in message:
+            self.selected = message["selected"]
         if "x" in message:
             self.x = domain[message["x"]]
         if "y" in message:
@@ -145,18 +149,66 @@ class ScatterPlotWidget(Widget):
 
     def update(self):
         if self.data is None:
-            self.emit(dict(datax=None, datay=None))
+            self.emit(dict(datax=None, datay=None, selected=None))
             return
 
         colx = self.data.get_column(self.x)
         coly = self.data.get_column(self.y)
         mask = ~np.isnan(colx) & ~np.isnan(coly)
-        self.emit({"datax": colx[mask].tolist(),
-                   "datay": coly[mask].tolist()})
+
+        self.emit({"datax": colx[mask].tolist(), "datay": coly[mask].tolist()})
+
+        data_to_send = self.data[self.selected] if self.selected else self.data
+
+        if not np.array_equal(data_to_send, self.last_sent_data):
+            self.send(data_to_send)
+            self.last_sent_data = data_to_send
+
+
+class TableWidget(Widget):
+    name = "Table"
+
+    def __init__(self, widget_id):
+        super().__init__(widget_id)
+        self.data = []
+        self.data_list = []
+        self.update()
+
+    def input(self, data):
+        self.clear_messages()
+        if data is None:
+            self.data = []
+            self.emit({"data": []})
+            self.info("No data", "Awaiting data...")
+        else:
+            try:
+                self.data = data
+                self.data_list = self.convert_orange_table_to_list(data)
+                self.emit({"data_list": self.data_list})
+            except Exception as e:
+                self.error("Error processing data", str(e))
+        self.update()
+
+    def convert_orange_table_to_list(self, orange_table):
+        """
+        Convert an Orange data table to a list of dictionaries.
+        Each dictionary represents a row, with keys as column names.
+        """
+        columns = [attr.name for attr in orange_table.domain.attributes]
+        data_list = []
+        for row in orange_table:
+            row_dict = {col: row[col].value for col in columns}
+            data_list.append(row_dict)
+        return data_list
+
+    def update(self):
+        self.emit({"data_list": self.data_list})
+        self.send(self.data)
 
 
 widget_repo = {
     "Data Set": DataSetWidget,
     "Info": InfoWidget,
-    "Scatter Plot": ScatterPlotWidget
+    "Scatter Plot": ScatterPlotWidget,
+    "Table": TableWidget,
 }
