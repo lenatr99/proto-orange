@@ -92,13 +92,11 @@ const ScatterPlotWidget = ({ settings, setter }) => {
 
   useEffect(() => {
     if (!deepEqual(selectedPoints, lastSelectedPointsRef.current)) {
-      if (selectedPoints.length > 0) {
-        setter({
-          ...settings,
-          selected: selectedPoints.map((point) => point.id),
-        });
-        lastSelectedPointsRef.current = selectedPoints;
-      }
+      setter({
+        ...settings,
+        selected: selectedPoints.map((point) => point.id),
+      });
+      lastSelectedPointsRef.current = selectedPoints;
     }
   }, [selectedPoints, settings, setter]);
 
