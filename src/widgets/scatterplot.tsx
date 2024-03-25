@@ -8,16 +8,38 @@ const ScatterPlotWidget = ({ settings, setter }) => {
   const svgRef = useRef();
   const [selectedPoints, setSelectedPoints] = useState([]);
 
-  const { attrs = [], datax = [], datay = [], x, y } = settings;
+  const { attrs = [], datax = [], datay = [], x, y, colorAttr } = settings;
+
+  const isColorAttrCategorical = colorAttr?.startsWith("cat_");
 
   const data = React.useMemo(
     () =>
-      datax && datay ? datax.map((x, i) => ({ id: i, x, y: datay[i] })) : [],
-    [datax, datay]
+      datax && datay
+        ? datax.map((x, i) => ({
+            id: i,
+            x,
+            y: datay[i],
+            colorValue: settings[`datacolor`][i],
+          }))
+        : [],
+    [datax, datay, settings, colorAttr]
   );
+
+  const colorScale = React.useMemo(() => {
+    if (isColorAttrCategorical) {
+      const uniqueValues = [...new Set(data.map((d) => d.colorValue))];
+      return d3.scaleOrdinal(d3.schemeCategory10).domain(uniqueValues);
+    } else {
+      return d3
+        .scaleSequential(d3.interpolateBlues)
+        .domain(d3.extent(data, (d) => d.colorValue));
+    }
+  }, [data, isColorAttrCategorical]);
 
   useEffect(() => {
     if (!svgRef.current || data.length === 0) return;
+
+    console.log("the settings are", settings);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -36,7 +58,6 @@ const ScatterPlotWidget = ({ settings, setter }) => {
       .domain(d3.extent(data, (d) => d.y))
       .range([height - margin.bottom, margin.top]);
 
-    // Axes
     svg
       .append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
@@ -59,8 +80,9 @@ const ScatterPlotWidget = ({ settings, setter }) => {
       .style("fill", (d) =>
         selectedPoints.some((point) => point.id === d.id)
           ? "red"
-          : settings.pointColor
-      );
+          : colorScale(d.colorValue)
+      )
+      .style("fill-opacity", 0.75);
 
     const brush = d3
       .brush()
@@ -86,7 +108,68 @@ const ScatterPlotWidget = ({ settings, setter }) => {
       });
       setSelectedPoints(selected);
     }
-  }, [data, settings.pointColor, selectedPoints, x, y]);
+
+    const legendContainer = svg
+      .append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${width - 100}, 20)`);
+
+    const updateLegend = () => {
+      legendContainer.selectAll(".legend-entry").remove();
+
+      let legendValues;
+
+      if (isColorAttrCategorical) {
+        legendValues = [...new Set(data.map((d) => d.colorValue))];
+      } else {
+        const extent = d3.extent(data, (d) => d.colorValue);
+        legendValues = d3
+          .scaleLinear()
+          .domain(extent)
+          .ticks(6)
+          .map((d) => d.toFixed(1));
+      }
+
+      const legendEntryHeight = 20;
+      const legendWidth = 150;
+      const legendHeight = legendValues.length * legendEntryHeight + 10;
+
+      legendContainer
+        .append("rect")
+        .attr("class", "legend-background")
+        .attr("x", -5)
+        .attr("y", -legendEntryHeight / 2)
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "white")
+        .style("opacity", 0.5);
+
+      const legendEntries = legendContainer
+        .selectAll(".legend-entry")
+        .data(legendValues)
+        .enter()
+        .append("g")
+        .attr("class", "legend-entry")
+        .attr("transform", (d, i) => `translate(0, ${i * 20})`);
+
+      legendEntries
+        .append("rect")
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", (d) =>
+          isColorAttrCategorical ? colorScale(d) : colorScale(+d)
+        );
+
+      legendEntries
+        .append("text")
+        .attr("x", 24)
+        .attr("y", 9)
+        .attr("dy", "0.35em")
+        .text((d) => d);
+    };
+
+    updateLegend();
+  }, [data, selectedPoints, x, y, colorScale, isColorAttrCategorical]);
 
   const lastSelectedPointsRef = useRef([]);
 
@@ -144,14 +227,20 @@ const ScatterPlotWidget = ({ settings, setter }) => {
             Color
           </Form.Label>
           <Col sm={11}>
-            <Form.Control
-              type="color"
-              defaultValue="#8884d8"
-              title="Choose your color"
+            <Form.Select
+              aria-label="Color attribute"
+              value={colorAttr || ""}
               onChange={(e) =>
-                setter({ ...settings, pointColor: e.target.value })
+                setter({ ...settings, colorAttr: e.target.value })
               }
-            />
+            >
+              <option value="">None</option>
+              {attrs.map((attr) => (
+                <option key={attr} value={attr}>
+                  {attr}
+                </option>
+              ))}
+            </Form.Select>
           </Col>
         </Form.Group>
       </Form>
@@ -169,8 +258,9 @@ ScatterPlotWidget.settings = {
   y: null,
   datax: null,
   datay: null,
-  pointColor: "#8884d8",
+  colorAttr: null,
 };
+
 ScatterPlotWidget.widgetName = "Scatter Plot";
 ScatterPlotWidget.icon = (
   <>

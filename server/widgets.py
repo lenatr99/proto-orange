@@ -121,7 +121,9 @@ class ScatterPlotWidget(Widget):
         super().__init__(widget_id)
         self.data = None
         self.x = None
+        self.xval = None
         self.y = None
+        self.color = None  # Initialize color attribute
         self.selected = []
         self.last_sent_data = None
 
@@ -133,8 +135,17 @@ class ScatterPlotWidget(Widget):
         else:
             names = [a.name for a in self.data.domain.variables]
             self.x, self.y = data.domain.attributes[:2]
-            self.color = None
-            self.emit({"attrs": names, "x": names[0], "y": names[1], "color": None})
+            self.color = (
+                data.domain.attributes[2] if len(data.domain.attributes) > 2 else None
+            )
+            self.emit(
+                {
+                    "attrs": names,
+                    "x": names[0],
+                    "y": names[1],
+                    "colorAttr": self.color.name if self.color else None,
+                }
+            )
         self.update()
 
     def handle(self, message):
@@ -145,6 +156,8 @@ class ScatterPlotWidget(Widget):
             self.x = domain[message["x"]]
         if "y" in message:
             self.y = domain[message["y"]]
+        if "colorAttr" in message:  # Handle color attribute change
+            self.color = domain[message["colorAttr"]]
         self.update()
 
     def update(self):
@@ -154,9 +167,20 @@ class ScatterPlotWidget(Widget):
 
         colx = self.data.get_column(self.x)
         coly = self.data.get_column(self.y)
+        colcolor = self.data.get_column(self.color) if self.color else None
         mask = ~np.isnan(colx) & ~np.isnan(coly)
+        filtered_colx = colx[mask].tolist()
+        filtered_coly = coly[mask].tolist()
+        filtered_colcolor = colcolor[mask].tolist() if colcolor is not None else None
 
-        self.emit({"datax": colx[mask].tolist(), "datay": coly[mask].tolist()})
+        self.emit(
+            {
+                "datax": colx[mask].tolist(),
+                "datay": coly[mask].tolist(),
+                "datacolor": filtered_colcolor,
+                "selected": self.selected,
+            }
+        )
 
         data_to_send = self.data[self.selected] if self.selected else self.data
 
