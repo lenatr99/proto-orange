@@ -127,16 +127,35 @@ const SelectionRect = ({downX, downY, x, y}) => {
 export const Canvas = () =>  {
     const newWidgetId = uuidv4;
     const [socket, setSocket] = useState(null);
-    const sessionId: string = React.useMemo(uuidv4, []);
+    const [sessionId] = useState(() => {
+        // Retrieve the sessionId if it exists or generate a new one
+        return localStorage.getItem('sessionId') || uuidv4();
+    });
     const [[menuX, menuY, menuAction], setMenu]: [[number?, number?, ((widget: string) => undefined)?], any] = useState([null, null, null]);
 
     React.useEffect(() => {
         const socket = io(window.location.hostname + ':4000');
         setSocket(socket);
+
+        socket.on('connect', () => {
+            // Request the current session data
+            socket.emit('load-session', {sessionId});
+        });
+
+        // Listen for session data from the server
+        socket.on('session-data', (data) => {
+            
+            // Assuming 'data' is the session object with widgets and connections
+            const {widgets, connections} = data;
+            // Update your widgets and connections state with this data
+            widgetAction({type: 'loadWidgets', widgets});
+            connectionsAction({type: 'loadConnections', connections});
+        });
+
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [sessionId]);
 
     const [showWorkflow, setShowWorkflow] = React.useState(true);
     const [showWidgets, setShowWidgets] = React.useState(true);
@@ -187,6 +206,14 @@ export const Canvas = () =>  {
                     return {...rest,
                             [widgetId]: value};
                 }
+                case "loadWidgets": {
+                    const loadedWidgets = {};
+                    args.widgets.forEach((widget) => {
+                        loadedWidgets[widget.widgetId] = widget;
+                    });
+                    console.log("loaded widgets", loadedWidgets);
+                    return loadedWidgets;
+                }
                 default:
                     throw new Error(`Unknown action type: ${type}`);
             }
@@ -217,6 +244,13 @@ export const Canvas = () =>  {
                     const {selection} = args;
                     return state.filter(
                         ([s, t]) => !selection.includes(s) && !selection.includes(t));
+                }
+                case "loadConnections": {
+                    const loadedConnections = [];
+                    args.connections.forEach((connection) => {
+                        loadedConnections.push(connection);
+                    });
+                    return loadedConnections;
                 }
                 default:
                     throw new Error(`Unknown action type: ${type}`);

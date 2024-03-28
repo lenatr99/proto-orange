@@ -6,6 +6,8 @@ from flask import Flask, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
+from pymongo import MongoClient
+
 from widgets import widget_repo, signal_manager
 
 
@@ -15,6 +17,9 @@ werkzeug_logger.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_handlers=False)
+client = MongoClient('localhost', 27017)  # Connect to MongoDB
+db = client['widget_app']  # Select the database
+sessions_collection = db['sessions']  # Select the collection
 CORS(app, resources={"*": {"origins": "*"}})
 
 
@@ -85,6 +90,7 @@ def handle_message(message):
     widget_actions.append(message)
 
     widgetId = value.get('widgetId', None)
+    current_session = value.get('sessionId', None)
     del value['sessionId']
     match value.get('type'):
         case 'addWidget':
@@ -92,13 +98,45 @@ def handle_message(message):
             widget_instances[widgetId] = widget_repo[value['widgetType']](widgetId)
             settings[widgetId] = {}
             add_widget_listener(widgetId)
-        case 'removeWidget':
-            remove_widget(widgetId)
+            widget_data = {
+                "widget_id": widgetId,
+                "type": value['widgetType'],
+                "settings": value.get('settings', {}),
+                "x": value.get('x', 0),
+                "y": value.get('y', 0),
+            }
+            # Check if the session already exists
+            session = sessions_collection.find_one({'sessionId': current_session})
+            if session:
+                # If session exists, add the new widget to the 'widgets' array
+                sessions_collection.update_one(
+                    {'sessionId': current_session},
+                    {'$push': {'widgets': widget_data}}
+                )
+            else:
+                # If session does not exist, create a new document with 'widgets' as an array
+                sessions_collection.insert_one({
+                    'sessionId': current_session,
+                    'widgets': [widget_data],  # Initialize as an array with the widget_data
+                    'connections': []  # Initialize connections as an empty array
+                })
         case 'removeWidgets':
             for widgetId in value["selection"]:
+                session = sessions_collection.find_one({'sessionId': current_session})
+                if session:
+                    sessions_collection.update_one(
+                        {'sessionId': current_session},
+                        {'$pull': {'widgets': {'widget_id': widgetId}}}
+                    )
                 remove_widget(widgetId)
         case 'moveWidget':
             widgets[widgetId].update(value)
+            session = sessions_collection.find_one({'sessionId': current_session})
+            if session:
+                sessions_collection.update_one(
+                    {'sessionId': current_session, 'widgets.widget_id': widgetId},
+                    {'$set': {'widgets.$.x': value['x'], 'widgets.$.y': value['y']}}
+                )
         case action:
             logging.error(f'unknown action: {action} with {value}')
     logging.debug(str(widgets))
@@ -140,6 +178,18 @@ def handle_message(message):
 @socketio.on('connect')
 def handle_message(message):
     logging.info("new connection")
+
+
+@socketio.on('load-session')
+def load_session(data):
+    session_id = data['sessionId']
+    session_data = sessions_collection.find_one({'sessionId': session_id}, {'_id': 0})
+    if session_data:
+        socketio.emit('session-data', session_data, to=request.sid)
+    else:
+        # Handle case where session is not found
+        socketio.emit('error', {'message': 'Session not found'}, to=request.sid)
+
 
 
 if __name__ == '__main__':
