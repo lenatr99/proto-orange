@@ -124,13 +124,9 @@ const SelectionRect = ({downX, downY, x, y}) => {
 };
 
 
-export const Canvas = () =>  {
+export const Canvas = ({ sessionId }) =>  {
     const newWidgetId = uuidv4;
     const [socket, setSocket] = useState(null);
-    const [sessionId] = useState(() => {
-        // Retrieve the sessionId if it exists or generate a new one
-        return localStorage.getItem('sessionId') || uuidv4();
-    });
     const [[menuX, menuY, menuAction], setMenu]: [[number?, number?, ((widget: string) => undefined)?], any] = useState([null, null, null]);
 
     React.useEffect(() => {
@@ -138,22 +134,17 @@ export const Canvas = () =>  {
         setSocket(socket);
 
         socket.on('connect', () => {
-            // Request the current session data
             socket.emit('load-session', {sessionId});
         });
-
-        // Listen for session data from the server
+    
         socket.on('session-data', (data) => {
-            
-            // Assuming 'data' is the session object with widgets and connections
             const {widgets, connections} = data;
-            // Update your widgets and connections state with this data
             widgetAction({type: 'loadWidgets', widgets});
             connectionsAction({type: 'loadConnections', connections});
         });
 
         return () => {
-            socket.disconnect();
+            if (socket) socket.disconnect();
         };
     }, [sessionId]);
 
@@ -208,12 +199,15 @@ export const Canvas = () =>  {
                 }
                 case "loadWidgets": {
                     const loadedWidgets = {};
-                    args.widgets.forEach((widget) => {
-                        loadedWidgets[widget.widgetId] = widget;
+                    args.widgets?.forEach((widget) => {
+                      loadedWidgets[widget.widgetId] = {
+                        ...widget,
+                        settings: widget.settings || {}  // Ensure default settings are applied if none are loaded
+                      };
                     });
-                    console.log("loaded widgets", loadedWidgets);
-                    return loadedWidgets;
-                }
+                    console.log("loadedWidgets", loadedWidgets);
+                    return {...state, ...loadedWidgets};
+                  }
                 default:
                     throw new Error(`Unknown action type: ${type}`);
             }
@@ -247,9 +241,12 @@ export const Canvas = () =>  {
                 }
                 case "loadConnections": {
                     const loadedConnections = [];
-                    args.connections.forEach((connection) => {
-                        loadedConnections.push(connection);
-                    });
+                    console.log("all connections", args.connections);
+                    args.connections?.forEach((connection) => {
+                      loadedConnections.push([connection.sourceId, connection.targetId]);
+                    }
+                    );
+                    console.log("loadedConnections", loadedConnections);
                     return loadedConnections;
                 }
                 default:
@@ -467,7 +464,7 @@ export const Canvas = () =>  {
             && SelectionRect(mouseState as ISelectionState)
         }
         { Object.values(widgets).map((widget) =>
-            <WidgetNode key={widget.widgetId} data={widget} widgetType={widgetRepo[widget.widgetType]}
+            <WidgetNode key={widget.widgetId} data={widget} widgetType={widgetRepo[widget.widgetType] || {}}
                     onMouseWidget={widgetMouse} onMouseEar={earMouse}
                     onHover={registerHover}
                     selected={selection.includes(widget.widgetId)}

@@ -11,9 +11,9 @@ export function useSyncedReducer<S, A>(
 
     const syncDispatch = React.useCallback((value: any) => {
         dispatch(value);
-        if (!transient || !transient.includes(value.type)) {
+        if (socket && (!transient || !transient.includes(value.type))) {
             const message = JSON.stringify({...value, sessionId});
-            console.log("emitting", eventName, value, message, socket);
+            console.log("emitting", eventName, message, socket);
             socket.emit(eventName, message);
         }
     }, [socket, sessionId, eventName, transient]);
@@ -22,7 +22,7 @@ export function useSyncedReducer<S, A>(
         const onReceive = (load: string) => {
             const value = JSON.parse(load);
             console.log("received", eventName, value);
-            if (value.sessionId !== sessionId) {
+            if (value.sessionId === sessionId) {
                 dispatch(value);
             }
         };

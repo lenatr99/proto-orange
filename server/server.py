@@ -57,9 +57,15 @@ def handle_message(message):
             widget_settings_actions[widget_id].append(message)
             socketio.emit(event_name, message, broadcast=True)
 
+            current_session = value.get('sessionId', None)
             del value['sessionId']
             settings[widget_id].update(value)
             widget_instances[widget_id].handle(value)
+            sessions_collection.update_one(
+                {'sessionId': current_session, 'widgets.widgetId': widget_id},
+                {'$set': {'widgets.$.settings': settings[widget_id]}}
+            )
+
 
         socketio.on_event(event_name, handle_message)
         logging.info(f'added listener for {event_name}')
@@ -99,26 +105,22 @@ def handle_message(message):
             settings[widgetId] = {}
             add_widget_listener(widgetId)
             widget_data = {
-                "widget_id": widgetId,
-                "type": value['widgetType'],
-                "settings": value.get('settings', {}),
+                "widgetId": widgetId,
+                "widgetType": value['widgetType'],
                 "x": value.get('x', 0),
                 "y": value.get('y', 0),
             }
-            # Check if the session already exists
             session = sessions_collection.find_one({'sessionId': current_session})
             if session:
-                # If session exists, add the new widget to the 'widgets' array
                 sessions_collection.update_one(
                     {'sessionId': current_session},
                     {'$push': {'widgets': widget_data}}
                 )
             else:
-                # If session does not exist, create a new document with 'widgets' as an array
                 sessions_collection.insert_one({
                     'sessionId': current_session,
-                    'widgets': [widget_data],  # Initialize as an array with the widget_data
-                    'connections': []  # Initialize connections as an empty array
+                    'widgets': [widget_data],
+                    'connections': []
                 })
         case 'removeWidgets':
             for widgetId in value["selection"]:
@@ -126,17 +128,17 @@ def handle_message(message):
                 if session:
                     sessions_collection.update_one(
                         {'sessionId': current_session},
-                        {'$pull': {'widgets': {'widget_id': widgetId}}}
+                        {'$pull': {'widgets': {'widgetId': widgetId}}}
                     )
                 remove_widget(widgetId)
         case 'moveWidget':
-            widgets[widgetId].update(value)
             session = sessions_collection.find_one({'sessionId': current_session})
             if session:
                 sessions_collection.update_one(
-                    {'sessionId': current_session, 'widgets.widget_id': widgetId},
+                    {'sessionId': current_session, 'widgets.widgetId': widgetId},
                     {'$set': {'widgets.$.x': value['x'], 'widgets.$.y': value['y']}}
                 )
+                print("changing widget position")
         case action:
             logging.error(f'unknown action: {action} with {value}')
     logging.debug(str(widgets))
@@ -146,6 +148,7 @@ def send_setting(widget_id, data):
     logging.info(f'widget {widget_id} was sent {data}')
     settings[widget_id].update(data)
     socketio.emit(f'widget-settings-{widget_id}', json.dumps(data), broadcast=True)
+
 
 
 @socketio.on('connection-action')
@@ -164,12 +167,30 @@ def handle_message(message):
 
     match value:
         case {'type': 'addConnection', 'sourceId': sourceId, 'targetId': targetId}:
-            signal_manager.connect(sourceId, targetId)
+            sessions_collection.update_one(
+                {'sessionId': value['sessionId']},
+                {'$push': {'connections': {'sourceId': sourceId, 'targetId': targetId}}}
+            )
         case {'type': 'removeConnection', 'sourceId': sourceId, 'targetId': targetId}:
-            signal_manager.disconnect(sourceId, targetId)
+            sessions_collection.update_one(
+                {'sessionId': value['sessionId']},
+                {'$pull': {'connections': {'sourceId': sourceId, 'targetId': targetId}}}
+            )
         case {'type': 'removeWidgets', 'selection': selection}:
             for widgetId in selection:
-                signal_manager.remove_widget(widgetId)
+                sessions_collection.update_one(
+                    {'sessionId': value['sessionId']},
+                    {'$pull': {'widgets': {'widgetId': widgetId}}}
+                )
+                #remove connection in db
+                sessions_collection.update_one(
+                    {'sessionId': value['sessionId']},
+                    {'$pull': {'connections': {'sourceId': widgetId}}}
+                )
+                sessions_collection.update_one(
+                    {'sessionId': value['sessionId']},
+                    {'$pull': {'connections': {'targetId': widgetId}}}
+                )
         case action:
             logging.error(f'unknown action: {action} with {value}')
     logging.debug(signal_manager.connections)
