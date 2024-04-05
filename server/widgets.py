@@ -11,6 +11,7 @@ class SignalManager:
     def connect(self, source_id, target_id):
         self.connections.add((source_id, target_id))
         if source_id in self.output_cache:
+            print("inputting from widget", source_id, "to widget", target_id)
             Widget.widgets[target_id].input(self.output_cache[source_id])
 
     def disconnect(self, source_id, target_id):
@@ -27,7 +28,10 @@ class SignalManager:
         for source, target in self.connections:
             if source == widget_id:
                 Widget.widgets[target].input(data)
-
+                
+    def clear(self):
+        self.connections.clear()
+        self.output_cache.clear()
 
 signal_manager = SignalManager()
 
@@ -84,6 +88,7 @@ class DataSetWidget(Widget):
         self.update()
 
     def handle(self, message):
+        print("handling")
         self.url = message.get('url', None)
         self.update()
 
@@ -98,6 +103,7 @@ class DataSetWidget(Widget):
             except Exception as e:
                 self.data = None
                 self.error("Error while loading data", str(e))
+        print("sending data")
         self.send(self.data)
 
 
@@ -124,6 +130,7 @@ class ScatterPlotWidget(Widget):
         self.y = None
 
     def input(self, data):
+        print("inputting scatter")
         self.data = data
         if self.data is None:
             self.x = self.y = self.color = None
@@ -136,8 +143,10 @@ class ScatterPlotWidget(Widget):
         self.update()
 
     def handle(self, message):
+        print("handling scatter")
         domain = self.data.domain
         if "x" in message:
+            print(message["x"])
             self.x = domain[message["x"]]
         if "y" in message:
             self.y = domain[message["y"]]

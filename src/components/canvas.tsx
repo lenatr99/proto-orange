@@ -137,11 +137,6 @@ export const Canvas = ({ sessionId }) =>  {
             socket.emit('load-session', {sessionId});
         });
     
-        socket.on('session-data', (data) => {
-            const {widgets, connections} = data;
-            widgetAction({type: 'loadWidgets', widgets});
-            connectionsAction({type: 'loadConnections', connections});
-        });
 
         return () => {
             if (socket) socket.disconnect();
@@ -159,6 +154,8 @@ export const Canvas = ({ sessionId }) =>  {
                     return args.widgets as IWidgetList;
                 }
                 case "addWidget": {
+                    //log on console
+                    console.log("Adding widget", args);
                     const widgetId = args.widgetId || newWidgetId();
                     return {...state,
                             [widgetId]: {...args, widgetId, isOpen: false}}
