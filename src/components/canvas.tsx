@@ -124,19 +124,22 @@ const SelectionRect = ({downX, downY, x, y}) => {
 };
 
 
-export const Canvas = () =>  {
+export const Canvas = ({ sessionId }) =>  {
     const newWidgetId = uuidv4;
     const [socket, setSocket] = useState(null);
-    const sessionId: string = React.useMemo(uuidv4, []);
+    // const sessionId: string = React.useMemo(uuidv4, []);
     const [[menuX, menuY, menuAction], setMenu]: [[number?, number?, ((widget: string) => undefined)?], any] = useState([null, null, null]);
 
     React.useEffect(() => {
         const socket = io(window.location.hostname + ':4000');
         setSocket(socket);
+        socket.on('connect', () => {
+            socket.emit('load-session', {sessionId});
+        });
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [sessionId]);
 
     const [showWorkflow, setShowWorkflow] = React.useState(true);
     const [showWidgets, setShowWidgets] = React.useState(true);
