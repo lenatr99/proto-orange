@@ -2,7 +2,7 @@ An exercise/prototype/technology test for Orange on Web
 
 For backend:
 - Prepare a Python environment with pip or conda, run `pip install -r backend/requirements.txt`.
-- Run `python bckend/main.py`.
+- Run `python backend/main.py`.
 
 For frontend:
 - Install the dependencies with `npm install --prefix frontend`.
