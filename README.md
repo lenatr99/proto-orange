@@ -1,8 +1,12 @@
 An exercise/prototype/technology test for Orange on Web
 
-- Prepare a Python environment with pip or conda, run `pip install -r requirements.txt`.
-- Run `python server/main.py`.
-- Run `npm start`
+For backend:
+- Prepare a Python environment with pip or conda, run `pip install -r backend/requirements.txt`.
+- Run `python bckend/main.py`.
+
+For frontend:
+- Install the dependencies with `npm install --prefix frontend`.
+- Run `npm start --prefix frontend`.
 - Open [http://localhost:3000](http://localhost:3000) in one or more browsers.
 
 If the server fails because of unexpected `broadcast=True` argument, try `pip install python-socketio==5.7.2`. Apparently `flask-socketio` has problems with newer versions of `python-socket`.
