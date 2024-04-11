@@ -1,6 +1,5 @@
 # orange4
 Development of Orange 4 (web version).
-An exercise/prototype/technology test for Orange on Web.
 
 For backend:
 - Prepare a Python environment with pip or conda, run `pip install -r backend/requirements.txt`.
