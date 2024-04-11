@@ -11,6 +11,7 @@ import WidgetMenu from "./widgetmenu";
 import Widget from "../widgets/widget";
 import {ImProfile, ImShare2} from "react-icons/im";
 import {Stack} from "react-bootstrap";
+import { useParams, useNavigate } from 'react-router-dom';
 
 
 const normalizedRect = (x1: number, y1: number,
@@ -124,7 +125,9 @@ const SelectionRect = ({downX, downY, x, y}) => {
 };
 
 
-export const Canvas = ({ sessionId }) =>  {
+export const Canvas = () =>  {
+    const { sessionId } = useParams();
+    let navigate = useNavigate();
     const newWidgetId = uuidv4;
     const [socket, setSocket] = useState(null);
     // const sessionId: string = React.useMemo(uuidv4, []);
@@ -143,6 +146,11 @@ export const Canvas = ({ sessionId }) =>  {
 
     const [showWorkflow, setShowWorkflow] = React.useState(true);
     const [showWidgets, setShowWidgets] = React.useState(true);
+
+    const endSession = () => {
+        socket.emit("clear-session");
+        navigate('/'); 
+    };
 
 
     const [widgets, widgetAction] = useSyncedReducer(
@@ -467,6 +475,12 @@ export const Canvas = ({ sessionId }) =>  {
               />
               <ImProfile style={{position: "fixed", top: 15, right: 50, opacity: showWidgets ? 0.8 : 0.4}} size={30}
               onClick={() => setShowWidgets(!showWidgets)}/>
+                                  <button
+                        style={{position: "fixed", top: 15, right: 90, opacity: 0.8}}
+                        onClick={endSession}
+                    >
+                        End Session
+                    </button>
             </Stack>
         </div>
         { menuX !== null

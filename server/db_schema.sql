@@ -22,3 +22,11 @@ CREATE TABLE connections (
     target_id TEXT NOT NULL,
     FOREIGN KEY(session_id) REFERENCES sessions(session_id)
 );
+
+DROP TABLE IF EXISTS settings;
+CREATE TABLE settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    widget_id TEXT NOT NULL,
+    settings TEXT,
+    FOREIGN KEY(widget_id) REFERENCES widgets(widget_id)
+);

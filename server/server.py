@@ -7,7 +7,7 @@ from flask import Flask, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
-from widgets import widget_repo, signal_manager
+from widgets import widget_repo, signal_manager, Widget
 
 
 werkzeug_logger = logging.getLogger('werkzeug')
@@ -26,19 +26,21 @@ def index():
 widget_actions = []
 widget_settings_actions = {}
 widgets = {}
-widget_instances = {}
+widget_instances = Widget.widgets
 
 connection_actions = []
 
 
 settings = defaultdict(dict)
 
-# init_db(app)
+with app.app_context():
+    init_db(app)
+
+app.teardown_appcontext(close_db)
 
 @socketio.on('widget-action')
 def handle_message(message):
     def add_widget_listener(widget_id):
-        print('adding listener')
         event_name = f'widget-settings-{widget_id}'
         widget_settings_actions[widget_id] = []
         
@@ -54,7 +56,10 @@ def handle_message(message):
 
             widget_settings_actions[widget_id].append(message)
             socketio.emit(event_name, message, broadcast=True)
-
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute('UPDATE settings SET settings = ? WHERE widget_id = ?', (json.dumps(value), widget_id))
+            db.commit()
             del value['sessionId']
             settings[widget_id].update(value)
             widget_instances[widget_id].handle(value)
@@ -71,6 +76,12 @@ def handle_message(message):
         del widgets[widget_id]
         del widget_instances[widget_id]
         del settings[widget_id]
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('DELETE FROM widgets WHERE widget_id = ?', (widget_id,))
+        cursor.execute('DELETE FROM settings WHERE widget_id = ?', (widget_id,))
+        cursor.execute('DELETE FROM connections WHERE source_id = ? OR target_id = ?', (widget_id, widget_id))
+        db.commit()
         remove_widget_listener(widget_id)
         signal_manager.remove_widget(widget_id)
                 
@@ -100,6 +111,9 @@ def handle_message(message):
             add_widget_listener(widgetId)
             cursor.execute('INSERT INTO widgets (widget_id, session_id, settings) VALUES (?, ?, ?)',
                            (widgetId, session_id, json.dumps(value)))
+            if settings[widgetId] != {}:
+                cursor.execute('INSERT INTO settings (widget_id, settings) VALUES (?, ?)',
+                            (widgetId, json.dumps(settings[widgetId])))
             db.commit()
         case 'removeWidget':
             remove_widget(widgetId)
@@ -114,7 +128,6 @@ def handle_message(message):
     
     
 def add_widget_listener(widget_id):
-    print('adding listener')
     event_name = f'widget-settings-{widget_id}'
     widget_settings_actions[widget_id] = []
     
@@ -185,26 +198,22 @@ def handle_message(message):
     
 @socketio.on('load-session')
 def load_session(data):
+    # This function finds the session in the database and loads it into the current session by first adding the widgets, then the connections and finally the settings.
     session_id = data['sessionId']
-    # check in database if session exists
     db = get_db()
     cursor = db.cursor()
     cursor.execute('SELECT id FROM sessions WHERE session_id = ?', (session_id,))
     row = cursor.fetchone()
     if row:
-        print('Session exists')
         cursor.execute('SELECT widget_id, settings FROM widgets WHERE session_id = ?', (session_id,))
         widgets_session = cursor.fetchall()
-        # initialize these widgets on the client without session_id
         for widget in widgets_session:
             widget_id, settings_session = widget
             socketio.emit('widget-action', json.dumps({'type': 'addWidget', 'widgetId': widget_id, **json.loads(settings_session)}))
             widget_actions.append(json.dumps({'type': 'addWidget', 'widgetId': widget_id, **json.loads(settings_session)}))
-            # start their listeners
-            widgetId = widget_id
-            widgets[widgetId] = json.loads(settings_session)
-            widget_instances[widgetId] = widget_repo[widgets[widgetId]['widgetType']](widgetId)
-            settings[widgetId] = {}
+            widgets[widget_id] = json.loads(settings_session)
+            widget_instances[widget_id] = widget_repo[widgets[widget_id]['widgetType']](widget_id)
+            settings[widget_id] = {}
             add_widget_listener(widget_id)
         cursor.execute('SELECT source_id, target_id FROM connections WHERE session_id = ?', (session_id,))
         connections = cursor.fetchall()
@@ -212,12 +221,35 @@ def load_session(data):
             source_id, target_id = connection
             socketio.emit('connection-action', json.dumps({'type': 'addConnection', 'sourceId': source_id, 'targetId': target_id}))
             connection_actions.append(json.dumps({'type': 'addConnection', 'sourceId': source_id, 'targetId': target_id}))
-        print(widget_instances)
+            signal_manager.connect(source_id, target_id)
+        for widget in widgets_session:
+            widget_id, settings_session = widget
+            cursor.execute('SELECT settings FROM settings WHERE widget_id = ?', (widget_id,))
+            settings_row = cursor.fetchone()
+            if settings_row:
+                value = json.loads(settings_row[0])
+                value['sessionId'] = session_id
+                widget_settings_actions[widget_id].append(json.dumps(value))
+                event_name = f'widget-settings-{widget_id}'
+                socketio.emit(event_name, json.dumps(value), broadcast=True)
+                del value['sessionId']
+                settings[widget_id].update(value)
+                widget_instances[widget_id].handle(value)
         
     else:
         logging.error(f"Session {session_id} not found. Creating new session.")
         cursor.execute('INSERT INTO sessions (session_id) VALUES (?)', (session_id,))
         db.commit()
+        
+@socketio.on('clear-session')
+def clear_session():
+    widget_actions.clear()
+    connection_actions.clear()
+    widgets.clear()
+    widget_instances.clear()
+    widget_settings_actions.clear()
+    settings.clear()
+    signal_manager.clear()
 
 
 if __name__ == '__main__':

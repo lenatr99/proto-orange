@@ -1,4 +1,6 @@
 import numpy as np
+from db import get_db
+import json
 
 import Orange
 
@@ -27,6 +29,10 @@ class SignalManager:
         for source, target in self.connections:
             if source == widget_id:
                 Widget.widgets[target].input(data)
+                
+    def clear(self):
+        self.connections.clear()
+        self.output_cache.clear()
 
 
 signal_manager = SignalManager()
@@ -40,10 +46,13 @@ class Widget:
         self.widgets[widget_id] = self
 
     def __del__(self):
-        del self.widgets[self.widget_id]
+        try:
+            del self.widgets[self.widget_id]
+        except KeyError:
+            pass
 
     def handle(self, message):
-        pass
+        self.update_db(message)
 
     def input(self, data):
         pass
@@ -60,6 +69,16 @@ class Widget:
             text=text,
             details=details,
             type=msg_type)})
+        
+    def update_db(self, message):
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT * FROM settings WHERE widget_id = ?', (self.widget_id,))
+        if not cursor.fetchone():
+            cursor.execute('INSERT INTO settings (widget_id, settings) VALUES (?, ?)', (self.widget_id, json.dumps(message)))
+        else:
+            cursor.execute('UPDATE settings SET settings = ? WHERE widget_id = ?', (json.dumps(message), self.widget_id))
+        db.commit()
 
     def error(self, text, details=None):
         self.message(text, details, "danger")
@@ -84,6 +103,7 @@ class DataSetWidget(Widget):
         self.update()
 
     def handle(self, message):
+        super().handle(message)
         self.url = message.get('url', None)
         self.update()
 
@@ -136,6 +156,7 @@ class ScatterPlotWidget(Widget):
         self.update()
 
     def handle(self, message):
+        super().handle(message)
         domain = self.data.domain
         if "x" in message:
             self.x = domain[message["x"]]
